@@ -5,7 +5,7 @@ except:
     from distutils.core import setup
 
 
-VERSION = '1.0.0'
+VERSION = '1.0.2'
 
 AUTHOR = "cn"
 
@@ -45,7 +45,7 @@ setup(
     url = URL,
     license = LICENSE,
     py_modules = MODULES,
-    install_requires=["putil", "python-json-logger"],
+    install_requires=["psutil", "python-json-logger"],
     include_package_data=True,
     zip_safe=True,
 )

@@ -5,11 +5,13 @@ import sys
 import copy
 import time
 import json
+import types
 import socket
 import psutil
 import signal
 import logging
 import datetime
+import importlib
 
 from queue import Empty
 from logging import handlers
@@ -740,3 +742,125 @@ class Logger(object):
         if 'logger' not in my_copy:
             my_copy['logger'] = self.name
         return my_copy
+
+
+class SettingsWrapper(object):
+    """
+    配置文件加载装饰器用来加载和覆盖配置信息
+    """
+    my_settings = {}
+    ignore = [
+        '__builtins__',
+        '__file__',
+        '__package__',
+        '__doc__',
+        '__name__',
+    ]
+
+    def _init__(self):
+        pass
+
+    def load(self, local='localsettings.py', default='settings.py'):
+        """
+        加载配置字典
+        :param local: 本地配置文件名
+        :param default: 本地配置文件名
+        :return: 配置信息字典
+        """
+        self._load_defaults(default)
+        self._load_custom(local)
+
+        return self.settings()
+
+    def load_from_string(self, settings_string='', module_name='customsettings'):
+        """
+        从配置语句中获取配置信息
+        :param settings_string: 配置信息语句
+        :param module_name: 配置信息的环境变量
+        :return:
+        """
+        mod = None
+        try:
+            mod = types.ModuleType(module_name)
+            exec(settings_string in mod.__dict__)
+        except TypeError:
+            print("Could not import settings")
+        self.my_settings = {}
+        try:
+            self.my_settings = self._convert_to_dict(mod)
+        except ImportError:
+            print("Settings unable to be loaded")
+
+        return self.settings()
+
+    def settings(self):
+        """
+        返回当时配置字典
+        :return:
+        """
+        return self.my_settings
+
+    def _load_defaults(self, default='settings.py'):
+        """
+        加载默认配置信息
+        :param default:
+        :return:
+        """
+        if isinstance(default, str) and default[-3:] == '.py':
+            default = default[:-3]
+
+        self.my_settings = {}
+        try:
+            if isinstance(default, str):
+                settings = importlib.import_module(default)
+            else:
+                settings = default
+            self.my_settings = self._convert_to_dict(settings)
+        except ImportError:
+            print("No default settings found")
+
+    def _load_custom(self, settings_name='localsettings.py'):
+        """
+        加载自定义配置信息，覆盖默认配置
+        :param settings_name:
+        :return:
+        """
+        if isinstance(settings_name, str) and settings_name[-3:] == '.py':
+            settings_name = settings_name[:-3]
+
+        new_settings = {}
+        try:
+            if isinstance(settings_name, str):
+                settings = importlib.import_module(settings_name)
+            else:
+                settings = settings_name
+            new_settings = self._convert_to_dict(settings)
+        except ImportError:
+            print("No override settings found")
+
+        for key in new_settings:
+            if key in self.my_settings:
+                item = new_settings[key]
+                if isinstance(item, dict) and \
+                        isinstance(self.my_settings[key], dict):
+                    for key2 in item:
+                        self.my_settings[key][key2] = item[key2]
+                else:
+                    self.my_settings[key] = item
+            else:
+                self.my_settings[key] = new_settings[key]
+
+    def _convert_to_dict(self, setting):
+        """
+        将配置文件转化为字典
+        :param setting:
+        :return:
+        """
+        the_dict = {}
+        set = dir(setting)
+        for key in set:
+            if key in self.ignore:
+                continue
+            value = getattr(setting, key)
+            the_dict[key] = value
+        return the_dict

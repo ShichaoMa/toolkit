@@ -1,2 +1,2 @@
-putil
+psutil
 python-json-logger
