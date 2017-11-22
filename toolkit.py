@@ -19,18 +19,22 @@ from functools import wraps, reduce
 from pythonjsonlogger.jsonlogger import JsonFormatter
 
 
-def duplicate(iterable, key=lambda x: x):
+def duplicate(iterable, keep=lambda x: x, key=lambda x: x):
     """
     保序去重
     :param iterable:
-    :param key:
+    :param keep: 去重的同时要对element做的操作
+    :param key: 使用哪一部分去重
     :return:
     """
     result = list()
+    duplicator = list()
     for i in iterable:
-        keep = key(i)
-        if keep not in result:
-            result.append(keep)
+        keep_field = keep(i)
+        key_words = key(i)
+        if key_words not in duplicator:
+            result.append(keep_field)
+            duplicator.append(key_words)
     return result
 
 
@@ -163,7 +167,7 @@ def format_html_string(html):
              (r"<([a-z][a-z0-9]*)\ [^>]*>", '<\g<1>>'),
              (r'<\s*script[^>]*>[^<]*<\s*/\s*script\s*>', ''),
              (r"</?a.*?>", '')]
-    return reduce(lambda string, replacement: re.sub(replacement[0], replacement[1], html), trims, html)
+    return reduce(lambda string, replacement: re.sub(replacement[0], replacement[1], string), trims, html)
 
 
 def urldecode(query):
@@ -192,12 +196,8 @@ def re_search(re_str, text, dotall=True):
         re_str = [re_str]
 
     for rex in re_str:
-        if isinstance(rex, str):
-            rex = re.compile(rex)
-        if dotall:
-            match_obj = rex.search(text, re.DOTALL)
-        else:
-            match_obj = rex.search(text)
+        rex = (re.compile(rex, re.DOTALL) if dotall else re.compile(rex)) if isinstance(rex, str) else rex
+        match_obj = rex.search(text)
 
         if match_obj is not None:
             t = match_obj.group(1).replace('\n', '')
