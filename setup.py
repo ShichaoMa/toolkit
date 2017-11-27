@@ -5,7 +5,7 @@ except:
     from distutils.core import setup
 
 
-VERSION = '1.0.4'
+VERSION = '1.1.1'
 
 AUTHOR = "cn"
 
@@ -26,25 +26,25 @@ KEYWORDS = "tools function"
 
 LICENSE = "MIT"
 
-MODULES = ["toolkit"]
+PACKAGES = ["toolkit"]
 
 setup(
-    name = NAME,
-    version = VERSION,
-    description = DESCRIPTION,
-    long_description = LONG_DESCRIPTION,
-    classifiers = [
+    name=NAME,
+    version=VERSION,
+    description=DESCRIPTION,
+    long_description=LONG_DESCRIPTION,
+    classifiers=[
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
         'Intended Audience :: Developers',
         'Operating System :: OS Independent',
     ],
-    keywords = KEYWORDS,
-    author = AUTHOR,
-    author_email = AUTHOR_EMAIL,
-    url = URL,
-    license = LICENSE,
-    py_modules = MODULES,
+    keywords=KEYWORDS,
+    author=AUTHOR,
+    author_email=AUTHOR_EMAIL,
+    url=URL,
+    license=LICENSE,
+    packages=PACKAGES,
     install_requires=["psutil", "python-json-logger"],
     include_package_data=True,
     zip_safe=True,
