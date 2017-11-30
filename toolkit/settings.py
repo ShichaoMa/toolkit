@@ -22,7 +22,7 @@ class Settings(dict):
     def get_int(self, k, d=None):
         try:
             return int(self.get(k, d))
-        except ValueError:
+        except TypeError:
             return d
 
     def get_bool(self, k, d=False):
@@ -32,13 +32,13 @@ class Settings(dict):
             except:
                 pass
             return bool(self.get(k, d))
-        except ValueError:
+        except TypeError:
             return d
 
     def get_float(self, k, d=None):
         try:
             return float(self.get(k, d))
-        except ValueError:
+        except TypeError:
             return d
 
 

@@ -10,9 +10,47 @@ import signal
 import logging
 
 from queue import Empty
-from functools import wraps, reduce
+from functools import wraps, reduce, partial
 
-__version__ = '1.1.1'
+__version__ = '1.1.10'
+
+
+_ITERABLE_SINGLE_VALUES = dict, str, bytes
+
+
+def arg_to_iter(arg):
+    """Convert an argument to an iterable. The argument can be a None, single
+    value, or an iterable.
+
+    Exception: if arg is a dict, [arg] will be returned
+    """
+    if arg is None:
+        return []
+    elif not isinstance(arg, _ITERABLE_SINGLE_VALUES) and hasattr(arg, '__iter__'):
+        return arg
+    else:
+        return [arg]
+
+
+class Compose(object):
+    """
+    连接多个函数
+    如果is_pipe=True，那么将第一个函数的结果做为第二个函数的参数
+    否则，返回所有函数结果集列表将传aggregation中进行聚合
+    """
+    def __init__(self, *functions, is_pipe=False, aggregation=partial(reduce, lambda x, y: x and y)):
+        self.functions = functions
+        self.is_pipe = is_pipe
+        self.aggregation = aggregation
+
+    def __call__(self, *args, **kwargs):
+        result_set = []
+        for index, func in enumerate(self.functions):
+            if not index or not self.is_pipe:
+                result_set.append(func(*args, **kwargs))
+            else:
+                result_set[0] = func(result_set[0])
+        return self.aggregation(result_set or [0, 0]) if len(result_set) !=1 else result_set[0]
 
 
 def duplicate(iterable, keep=lambda x: x, key=lambda x: x, reverse=False):
@@ -180,10 +218,10 @@ def urldecode(query):
     return dict(x.split("=") for x in query.strip().split("&"))
 
 
-def re_search(re_str, text, dotall=True, default=""):
+def re_search(regex, text, dotall=True, default=""):
     """
     抽取正则规则的第一组元素
-    :param re_str:
+    :param regex:
     :param text:
     :param dotall:
     :param default:
@@ -192,10 +230,10 @@ def re_search(re_str, text, dotall=True, default=""):
     if isinstance(text, bytes):
         text = text.decode("utf-8")
 
-    if not isinstance(re_str, list):
-        re_str = [re_str]
+    if not isinstance(regex, list):
+        regex = [regex]
 
-    for rex in re_str:
+    for rex in regex:
         rex = (re.compile(rex, re.DOTALL) if dotall else re.compile(rex)) if isinstance(rex, str) else rex
         match_obj = rex.search(text)
 
@@ -367,6 +405,25 @@ def async_produce_wrapper(producer, logger, batch_size=10):
     return wrapper
 
 
+def load_function(function_str):
+    """
+    返回字符串表示的函数对象
+    :param function_str: module1.module2.function
+    :return: function
+    """
+    mod_str, _sep, function_str = function_str.rpartition('.')
+    return getattr(load_module(mod_str), function_str)
+
+
+def load_module(module_str):
+    """
+    返回字符串表示的模块
+    :param module_str: os.path
+    :return: os.path
+    """
+    return __import__(module_str, fromlist=module_str)
+
+
 def free_port():
     """
     Determines a free port using sockets.
@@ -514,3 +571,13 @@ class LazyDict(object):
 
     def to_dict(self):
         return self.dict
+
+
+if __name__ == "__main__":
+    def a(v):
+        return v
+    def b(v):
+        return v
+    def c(v):
+        return 2
+    print(Compose(a,b,c)())

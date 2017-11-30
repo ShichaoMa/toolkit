@@ -70,8 +70,11 @@ class Logger(object):
         level = settings.get('LOG_LEVEL', 'DEBUG')
         stdout = settings.get_bool('LOG_STDOUT', True)
         dir = settings.get('LOG_DIR', 'logs')
-        bytes = settings.get_int('LOG_MAX_BYTES', 10*1024*1024)
+        bytes = settings.get('LOG_MAX_BYTES', '10MB')
         backups = settings.get_int('LOG_BACKUPS', 5)
+        udp_host = settings.get("LOG_UDP_HOST", "127.0.0.1")
+        udp_port = settings.get_int("LOG_UDP_PORT", 5230)
+        file_out = settings.get_bool('LOG_FILE', False)
         logger = cls(name=name)
         logger.logger.propagate = False
         logger.json = json
@@ -84,13 +87,15 @@ class Logger(object):
 
         if stdout:
             logger.set_handler(logging.StreamHandler(sys.stdout))
-        else:
+        elif file_out:
             os.makedirs(dir, exist_ok=True)
             file_handler = handlers.RotatingFileHandler(
                 os.path.join(dir, "%s.log"%name),
                 maxBytes=bytes,
                 backupCount=backups)
             logger.set_handler(file_handler)
+        else:
+            logger.set_handler(UDPLogstashHandler(udp_host, udp_port))
 
         return logger
 
