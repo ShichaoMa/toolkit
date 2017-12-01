@@ -1,2 +1,4 @@
 psutil
 python-json-logger
+redis
+kafka-python

@@ -1,6 +1,8 @@
 # -*- coding:utf-8 -*-
 import os
 import re
+import sys
+import pdb
 import time
 import json
 import types
@@ -12,10 +14,20 @@ import logging
 from queue import Empty
 from functools import wraps, reduce, partial
 
-__version__ = '1.1.10'
+__version__ = '1.2.0'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
+
+
+def debugger():
+    try:
+        debug = eval(os.environ.get("DEBUG"))
+    except Exception:
+        debug = False
+    if debug:
+        d = pdb.Pdb()
+        d.set_trace( sys._getframe().f_back)
 
 
 def arg_to_iter(arg):
@@ -414,6 +426,8 @@ def load_function(function_str):
     mod_str, _sep, function_str = function_str.rpartition('.')
     return getattr(load_module(mod_str), function_str)
 
+load_class = load_function
+
 
 def load_module(module_str):
     """
@@ -421,7 +435,7 @@ def load_module(module_str):
     :param module_str: os.path
     :return: os.path
     """
-    return __import__(module_str, fromlist=module_str)
+    return __import__(module_str, fromlist=module_str.split(".")[-1])
 
 
 def free_port():

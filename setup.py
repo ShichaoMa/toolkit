@@ -5,7 +5,7 @@ except:
     from distutils.core import setup
 
 
-VERSION = '1.1.10'
+VERSION = '1.2.0'
 
 AUTHOR = "cn"
 
@@ -45,7 +45,7 @@ setup(
     url=URL,
     license=LICENSE,
     packages=PACKAGES,
-    install_requires=["psutil", "python-json-logger"],
+    install_requires=["psutil", "python-json-logger", "redis", "kafka-python"],
     include_package_data=True,
     zip_safe=True,
 )
