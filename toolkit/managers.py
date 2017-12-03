@@ -90,7 +90,7 @@ class Timer(object):
     ...
     """
     def __init__(self, start=None):
-        self.start = start is not None or time.time()
+        self.start = start if start is not None else time.time()
 
     def __enter__(self):
         return self
