@@ -20,7 +20,7 @@ from .daemon_ctl import common_stop_start_control
 __all__ = ["ParallelMonitor", "LoggingMonitor"]
 
 
-class ParallelMonitor(object):
+class ParallelMonitor(object, metaclass=Singleton):
     """
     支持多线程多进程统一管理
     """
@@ -92,7 +92,7 @@ class LoggingMonitor(object):
         return True
 
 
-class Service(LoggingMonitor, ParallelMonitor, metaclass=Singleton):
+class Service(LoggingMonitor, ParallelMonitor):
     """
         可执行程序，支持守护进程启动
     """
