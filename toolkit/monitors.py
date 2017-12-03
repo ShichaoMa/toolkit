@@ -12,6 +12,7 @@ from kafka import KafkaConsumer, KafkaProducer
 
 from . import call_later
 from .logger import Logger
+from .singleton import Singleton
 from .managers import ExceptContext
 from .settings import SettingsWrapper
 from .daemon_ctl import common_stop_start_control
@@ -91,7 +92,7 @@ class LoggingMonitor(object):
         return True
 
 
-class Service(LoggingMonitor, ParallelMonitor):
+class Service(LoggingMonitor, ParallelMonitor, metaclass=Singleton):
     """
         可执行程序，支持守护进程启动
     """
