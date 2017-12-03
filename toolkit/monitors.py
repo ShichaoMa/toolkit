@@ -64,7 +64,7 @@ class ParallelMonitor(object):
 
 class LoggingMonitor(object):
     """
-    内建Logger和Settings的ParallelMonitor
+    内建Logger和Settings
     """
     name = "logging_monitor"
     wrapper = SettingsWrapper()
@@ -103,7 +103,6 @@ class Service(LoggingMonitor, ParallelMonitor):
         super(Service, self).__init__(self.args.settings, self.args.localsettings)
 
     def enrich_parser_arguments(self):
-        self.parser.add_argument("-d", "--daemon", help="Run backend. ")
         self.parser.add_argument("-s", "--settings", help="Setting module. ", default="settings")
         self.parser.add_argument("-ls", "--localsettings", help="Local setting module. ", default="localsettings")
 

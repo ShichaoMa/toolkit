@@ -9,8 +9,9 @@ __all__ = ["Blocker", "ExceptContext", "Timer"]
 class Blocker(object):
     """
     有的时候我们需要将线程停止一段时间，通常我们选择调用time.sleep(..)，当我们需要sleep很长一段时间，
-    比如一分钟以上时，如果这时我们选择关闭程序，由于time.sleep阻塞导致我们的程序难以被关闭，通过使用
-    Blocker
+    比如一分钟以上时，如果这时我们选择关闭程序，而我们通过singal注册了关闭信号的监听器，用来改变当时程序的状态，
+    如果置self.alive = False,由于time.sleep阻塞导致我们的程序当前线程无法获知alive状态，难以被关闭，通过使用
+    Blocker，我们可以避免上述情况发生。
     eg:
     def myfunc(self):
         with Blocker(sleep_time, self, interval=1, notify=lambda x: not x.alive) as sm:
@@ -46,7 +47,7 @@ class Blocker(object):
 
 class ExceptContext(object):
     """
-    异常捕捉上下文
+    异常捕获上下文
     eg:
     def test():
         with ExceptContext(Exception, errback=lambda name, *args:print(name)):
@@ -89,7 +90,7 @@ class Timer(object):
     ...
     """
     def __init__(self, start=None):
-        self.start = start or time.time()
+        self.start = start is not None or time.time()
 
     def __enter__(self):
         return self
