@@ -12,6 +12,7 @@ from kafka import KafkaConsumer, KafkaProducer
 
 from . import call_later
 from .logger import Logger
+from .singleton import Singleton
 from .managers import ExceptContext
 from .settings import SettingsWrapper
 from .daemon_ctl import common_stop_start_control
@@ -19,7 +20,7 @@ from .daemon_ctl import common_stop_start_control
 __all__ = ["ParallelMonitor", "LoggingMonitor"]
 
 
-class ParallelMonitor(object):
+class ParallelMonitor(object, metaclass=Singleton):
     """
     支持多线程多进程统一管理
     """
@@ -27,6 +28,9 @@ class ParallelMonitor(object):
     name = "parallel_monitor"
     children = []
     int_signal_count = 1
+    #
+    # def __new__(cls, *args, **kwargs):
+    #     return super(ParallelMonitor, cls).__new__(cls)
 
     def __init__(self):
         super(ParallelMonitor, self).__init__()

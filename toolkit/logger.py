@@ -9,6 +9,7 @@ from logging import handlers
 from pythonjsonlogger.jsonlogger import JsonFormatter
 
 from . import _find_caller_name
+from .singleton import Singleton
 
 
 def extras_wrapper(self, item):
@@ -48,18 +49,10 @@ class UDPLogstashHandler(handlers.DatagramHandler):
         return self.formatter.format(record).encode("utf-8")
 
 
-class Logger(object):
+class Logger(object, metaclass=Singleton):
     """
     logger的实现
     """
-    logger = None
-
-    def __new__(cls, *args, **kwargs):
-        # 保证单例
-        if not cls.logger:
-            cls.logger = super(Logger, cls).__new__(cls)
-        return cls.logger
-
     def __init__(self, name):
         self.logger = logging.getLogger(name)
 
