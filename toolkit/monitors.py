@@ -17,7 +17,7 @@ from .managers import ExceptContext
 from .settings import SettingsWrapper
 from .daemon_ctl import common_stop_start_control
 
-__all__ = ["ParallelMonitor", "LoggingMonitor"]
+__all__ = ["ParallelMonitor", "LoggingMonitor", "Service", "ProxyPool", "ItemConsumer", "ItemProducer"]
 
 
 class ParallelMonitor(object, metaclass=Singleton):
@@ -28,9 +28,6 @@ class ParallelMonitor(object, metaclass=Singleton):
     name = "parallel_monitor"
     children = []
     int_signal_count = 1
-    #
-    # def __new__(cls, *args, **kwargs):
-    #     return super(ParallelMonitor, cls).__new__(cls)
 
     def __init__(self):
         super(ParallelMonitor, self).__init__()
@@ -68,7 +65,7 @@ class ParallelMonitor(object, metaclass=Singleton):
 
 class LoggingMonitor(object):
     """
-    内建Logger和Settings的ParallelMonitor
+    内建Logger和Settings
     """
     name = "logging_monitor"
     wrapper = SettingsWrapper()
@@ -107,7 +104,6 @@ class Service(LoggingMonitor, ParallelMonitor):
         super(Service, self).__init__(self.args.settings, self.args.localsettings)
 
     def enrich_parser_arguments(self):
-        self.parser.add_argument("-d", "--daemon", help="Run backend. ")
         self.parser.add_argument("-s", "--settings", help="Setting module. ", default="settings")
         self.parser.add_argument("-ls", "--localsettings", help="Local setting module. ", default="localsettings")
 
@@ -170,7 +166,15 @@ class ItemConsumer(Service):
         self.logger.debug("Consume feature success: %s. " % str(value))
 
     @call_later("commit", interval=10, immediately=False)
-    def consume(self, callback=lambda value: value, errback=lambda message: message):
+    def consume(self, callback=lambda value: value, errback=lambda message: None):
+        """
+        两种模式，当不提供callback, errback的时候，调用consume直接获得message.value，异步处理信息
+        当提供了自定义callback,则处理信息变为同步，可以选择在callback中对message.value进行处理，返回假则处理失败，
+        处理失败后会继续调用errback，可以做回滚offset等操作。
+        :param callback:
+        :param errback:
+        :return: 
+        """
         with ExceptContext(errback=self.log_err):
             with ExceptContext((StopIteration, OSError), errback=lambda *args: True):
                 message = self.consumer.__next__()
@@ -183,7 +187,7 @@ class ItemConsumer(Service):
                     if value:
                         return value
                     else:
-                        message = errback(message)
+                        return errback(message)
 
     def commit(self):
         future = self.consumer.commit_async()

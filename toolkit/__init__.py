@@ -14,7 +14,7 @@ import logging
 from queue import Empty
 from functools import wraps, reduce, partial
 
-__version__ = '1.2.0'
+__version__ = '1.2.7'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
@@ -75,7 +75,7 @@ def duplicate(iterable, keep=lambda x: x, key=lambda x: x, reverse=False):
     :return:
     """
     result = list()
-    duplicator = list()
+    duplicator = set()
     if reverse:
         iterable = reversed(iterable)
     for i in iterable:
@@ -83,7 +83,7 @@ def duplicate(iterable, keep=lambda x: x, key=lambda x: x, reverse=False):
         key_words = key(i)
         if key_words not in duplicator:
             result.append(keep_field)
-            duplicator.append(key_words)
+            duplicator.add(key_words)
     return list(reversed(result)) if reverse else result
 
 
@@ -160,7 +160,7 @@ def safely_json_loads(json_str, defaulttype=dict, escape=True):
 
 def chain_all(iter):
     """
-    连接两个序列或字典
+    连接多个序列或字典
     :param iter:
     :return:
     """
@@ -481,11 +481,8 @@ def thread_safe(lock):
     def decorate(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            try:
-                lock.acquire()
+            with lock:
                 return func(*args, **kwargs)
-            finally:
-                lock.release()
         return wrapper
     return decorate
 
