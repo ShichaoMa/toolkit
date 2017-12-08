@@ -72,7 +72,6 @@ class LoggingMonitor(object):
     _logger = None
 
     def __init__(self, settings, localsettings=None):
-        super(LoggingMonitor, self).__init__()
         if isinstance(settings, dict):
             self.settings = settings
         else:
@@ -173,7 +172,7 @@ class ItemConsumer(Service):
         处理失败后会继续调用errback，可以做回滚offset等操作。
         :param callback:
         :param errback:
-        :return: 
+        :return:
         """
         with ExceptContext(errback=self.log_err):
             with ExceptContext((StopIteration, OSError), errback=lambda *args: True):
