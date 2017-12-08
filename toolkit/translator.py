@@ -1,9 +1,9 @@
-from translate import Translate, sites
+from translate import TranslateAdapter
 
 from .monitors import ProxyPool
 
 
-class Translator(ProxyPool, Translate):
+class Translator(ProxyPool, TranslateAdapter):
     """
         翻译类
     """
@@ -11,7 +11,18 @@ class Translator(ProxyPool, Translate):
 
     def __init__(self, settings):
         super(Translator, self).__init__(settings=settings)
-        self.web_site = self.settings.get("WEBSITE", "baidu,qq,google").split(",")
-        self.retry_times = self.settings.get("TRANSLATE_RETRY_TIMES", 10)
-        self.translate_timeout = self.settings.get("TRANSLATE_TIMEOUT", 10)
-        self.load(sites)
+        self._web_site = self.settings.get("WEBSITE", "baidu,qq,google").split(",")
+        self._retry_times = self.settings.get("TRANSLATE_RETRY_TIMES", 10)
+        self._translate_timeout = self.settings.get("TRANSLATE_TIMEOUT", 10)
+
+    @property
+    def web_site(self):
+        return self._web_site
+
+    @property
+    def translate_timeout(self):
+        return self._translate_timeout
+
+    @property
+    def retry_times(self):
+        return self._retry_times

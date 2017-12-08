@@ -1,15 +1,16 @@
-# -*- coding:utf-8 -*-
 import time
-from toolkit.manager import Timer
+import unittest
+from toolkit.managers import Timer
 
 
-def test_timer():
-    with Timer() as timer:
-        time.sleep(3)
-        raise Exception("aa")
+class TimerTest(unittest.TestCase):
 
-    print(timer.cost)
+    def test_timer(self):
+        with Timer() as timer:
+            time.sleep(3)
+
+        self.assertTrue(timer.cost>3)
 
 
 if __name__ == "__main__":
-    test_timer()
+    unittest.main()

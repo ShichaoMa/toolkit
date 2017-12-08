@@ -1,4 +1,12 @@
+import unittest
 from toolkit.monitors import Service
 
 
-print(Service() is Service())
+class SingletonTest(unittest.TestCase):
+
+    def test(self):
+      self.assertIs(Service(), Service())
+
+
+if __name__ == "__main__":
+    unittest.main()

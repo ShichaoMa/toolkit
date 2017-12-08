@@ -72,6 +72,7 @@ class LoggingMonitor(object):
     _logger = None
 
     def __init__(self, settings, localsettings=None):
+        super(LoggingMonitor, self).__init__()
         if isinstance(settings, dict):
             self.settings = settings
         else:
