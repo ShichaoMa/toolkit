@@ -66,6 +66,7 @@ class ExceptContext(object):
         self.finalback = finalback
         self.exception = exception
         self.got_err = False
+        self.err_info = None
         self.func_name = func_name or _find_caller_name(is_func=True)
 
     def __enter__(self):
@@ -75,6 +76,7 @@ class ExceptContext(object):
         return_code = False
         if isinstance(exc_val, self.exception):
             self.got_err = True
+            self.err_info = (exc_type, exc_val, exc_tb)
             return_code = self.errback(self.func_name, exc_type, exc_val, exc_tb)
         self.finalback(self.got_err)
         return return_code

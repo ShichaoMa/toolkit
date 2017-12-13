@@ -120,10 +120,12 @@ class FifoDiskQueue(object):
     @call_later(callback="_saveinfo")
     def rid(self, count):
         messages = []
-        message = self.pop()
-        while message and len(messages) < count:
-            messages.append(message)
+        while len(messages) < count:
             message = self.pop()
+            if message:
+                messages.append(message)
+            else:
+                break
         return messages
 
     @thread_safe_for_method_in_class

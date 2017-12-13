@@ -14,7 +14,7 @@ import logging
 from queue import Empty
 from functools import wraps, reduce, partial
 
-__version__ = '1.2.11'
+__version__ = '1.2.16'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
@@ -526,11 +526,8 @@ def thread_safe_for_method_in_class(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         self = args[0]
-        try:
-            self.lock.acquire()
+        with self.lock:
             return func(*args, **kwargs)
-        finally:
-            self.lock.release()
     return wrapper
 
 
