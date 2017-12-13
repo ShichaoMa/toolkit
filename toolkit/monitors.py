@@ -44,7 +44,7 @@ class ParallelMonitor(object, metaclass=Singleton):
 
     def stop(self, *args):
         if self.int_signal_count > 1:
-            self.logger.info("force to terminate...")
+            self.logger.info("Force to terminate...")
             for th in self.children[:]:
                 self.stop_child(th)
             pid = os.getpid()
@@ -52,7 +52,7 @@ class ParallelMonitor(object, metaclass=Singleton):
 
         else:
             self.alive = False
-            self.logger.info("close process %s..." % self.name)
+            self.logger.info("Close process %s..." % self.name)
             self.int_signal_count += 1
 
     def open(self):
@@ -194,16 +194,15 @@ class ItemConsumer(Service):
         future.add_callback(self.consume_callback)
         future.add_errback(self.consume_errback)
 
+    def close(self):
+        with ExceptContext(Exception, errback=lambda *args: True):
+            if self.consumer:
+                self.consumer.close()
+
     def enrich_parser_arguments(self):
         super(ItemConsumer, self).enrich_parser_arguments()
         self.parser.add_argument("-ti", "--topic-in", help="Topic in. ")
         self.parser.add_argument("-c", "--consumer", help="consumer id. ")
-
-    def stop(self, *args):
-        super(ItemConsumer, self).stop(args)
-        with ExceptContext(Exception, errback=lambda *args: True):
-            if self.consumer:
-                self.consumer.close()
 
 
 class ItemProducer(Service):
@@ -237,6 +236,3 @@ class ItemProducer(Service):
     def enrich_parser_arguments(self):
         super(ItemProducer, self).enrich_parser_arguments()
         self.parser.add_argument("-to", "--topic-out", help="Topic out. ")
-
-    def stop(self, *args):
-        super(ItemProducer, self).stop(args)
