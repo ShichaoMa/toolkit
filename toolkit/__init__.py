@@ -14,7 +14,7 @@ import logging
 from queue import Empty
 from functools import wraps, reduce, partial
 
-__version__ = '1.3.1'
+__version__ = '1.3.3'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
@@ -75,7 +75,7 @@ def duplicate(iterable, keep=lambda x: x, key=lambda x: x, reverse=False):
     :return:
     """
     result = list()
-    duplicator = set()
+    duplicator = list()
     if reverse:
         iterable = reversed(iterable)
     for i in iterable:
@@ -83,7 +83,7 @@ def duplicate(iterable, keep=lambda x: x, key=lambda x: x, reverse=False):
         key_words = key(i)
         if key_words not in duplicator:
             result.append(keep_field)
-            duplicator.add(key_words)
+            duplicator.append(key_words)
     return list(reversed(result)) if reverse else result
 
 
@@ -579,6 +579,23 @@ class LazyDict(object):
 
     def to_dict(self):
         return self.dict
+
+
+def cache_property(func):
+    """
+    缓存属性，只计算一次
+    :param func:
+    :return:
+    """
+    @property
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        self = args[0]
+        prop_name = "_%s"%func.__name__
+        if prop_name not in self.__dict__:
+            self.__dict__[prop_name] = func(*args, **kwargs)
+        return self.__dict__[prop_name]
+    return wrapper
 
 
 if __name__ == "__main__":

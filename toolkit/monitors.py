@@ -16,6 +16,7 @@ from .singleton import Singleton
 from .managers import ExceptContext
 from .settings import SettingsWrapper
 from .daemon_ctl import common_stop_start_control
+from .consoler import Consoler
 
 __all__ = ["ParallelMonitor", "LoggingMonitor", "Service", "ProxyPool", "ItemConsumer", "ItemProducer"]
 
@@ -92,18 +93,20 @@ class LoggingMonitor(object):
         return True
 
 
-class Service(LoggingMonitor, ParallelMonitor):
+class Service(LoggingMonitor, Consoler, ParallelMonitor):
     """
         可执行程序，支持守护进程启动
     """
     name = "Service"
     parser = None
-
+    args = None
+    
     def __init__(self):
         self.args = self.parse_args()
         super(Service, self).__init__(self.args.settings, self.args.localsettings)
 
     def enrich_parser_arguments(self):
+        super(Service, self).enrich_parser_arguments()
         self.parser.add_argument("-s", "--settings", help="Setting module. ", default="settings")
         self.parser.add_argument("-ls", "--localsettings", help="Local setting module. ", default="localsettings")
 

@@ -1,3 +1,5 @@
+import sys
+sys.path.insert(0, "/Users/mashichao/myprojects/toolkit")
 from toolkit.monitors import Service
 
 

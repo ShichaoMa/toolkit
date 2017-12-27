@@ -6,6 +6,7 @@
 子类的元类(除type以外)必须是父类元类的子类
 使用了元类的类的子类也会使用该元类创建
 """
+from abc import ABCMeta
 
 
 class Singleton(type):
@@ -28,6 +29,13 @@ class Singleton(type):
     def __call__(cls, *args, **kwargs):
         cls._instance = cls._instance or super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instance
+
+
+class SingletonABCMeta(ABCMeta, Singleton):
+    """
+    当抽象类同时也是单例类时使用该元类构建
+    """
+    pass
 
 
 if __name__ == "__main__":

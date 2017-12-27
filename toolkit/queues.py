@@ -69,6 +69,9 @@ class RedisQueue(Queue):
     def clear(self):
         self.redis_conn.delete(self.key)
 
+    def close(self):
+        pass
+
 
 class RedisHashSet(object):
     """
