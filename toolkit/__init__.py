@@ -14,7 +14,7 @@ import logging
 from queue import Empty
 from functools import wraps, reduce, partial
 
-__version__ = '1.3.4'
+__version__ = '1.3.5'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
@@ -596,6 +596,27 @@ def cache_property(func):
             self.__dict__[prop_name] = func(*args, **kwargs)
         return self.__dict__[prop_name]
     return wrapper
+
+
+def cache_for(interval=10):
+    """
+    缓存属性，指定缓存失效时间
+    :param interval:缓存失效时间 second
+    :return:
+    """
+    def cache_property(func):
+        @property
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            self = args[0]
+            prop_name = "_%s"%func.__name__
+            prop_start_name = "%s_cache_start_time" % prop_name
+            if time.time() - self.__dict__.get(prop_start_name, 0) > interval:
+                self.__dict__[prop_name] = func(*args, **kwargs)
+                self.__dict__["%s_cache_start_time" % prop_name] = time.time()
+            return self.__dict__[prop_name]
+        return wrapper
+    return cache_property
 
 
 if __name__ == "__main__":
