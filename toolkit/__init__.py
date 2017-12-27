@@ -14,7 +14,7 @@ import logging
 from queue import Empty
 from functools import wraps, reduce, partial
 
-__version__ = '1.3.3'
+__version__ = '1.3.4'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes

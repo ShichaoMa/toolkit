@@ -1,12 +1,10 @@
-import sys
 import time
+
 from argparse import ArgumentParser
-sys.path.insert(0, "/Users/mashichao/myprojects/toolkit")
 from toolkit.consoler import Consoler
-from toolkit.monitors import ParallelMonitor
 
 
-class Service(Consoler, ParallelMonitor):
+class Service(Consoler):
 
     args = None
 
@@ -16,7 +14,11 @@ class Service(Consoler, ParallelMonitor):
 
     def start(self):
         while self.alive:
+            self.process()
             time.sleep(1)
+
+    def process(self):
+        print("程序正在执行")
 
     def parse_args(self):
         self.parser = ArgumentParser(conflict_handler="resolve")

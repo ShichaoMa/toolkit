@@ -161,7 +161,7 @@ class Consoler(metaclass=SingletonABCMeta):
 
     def start_client(self):
         client = socket()
-        client.connect((self.args.console_host, 7878))
+        client.connect((self.args.console_host, self.args.console_port))
         result = b""
         while self.alive:
             if not result.count(b"...") and result != b">>> ":
@@ -184,20 +184,17 @@ class Consoler(metaclass=SingletonABCMeta):
 
     def console(self, locals):
         server = socket()
-        server.bind(("", 7878))
+        server.bind((self.args.console_host, self.args.console_port))
         server.listen(0)
         ci = CustomInteractiveInterpreter(locals)
         _local._current_ipy = ci
         while self.alive:
             client, addr = server.accept()
-            #print("recv from %s:%s"%addr)
             while self.alive:
                 cmd = client.recv(102400)
-                #print("recv %s"%cmd)
                 if cmd == b"exit" or cmd == b"exit()" or not cmd:
                     break
                 result = ci.runsource(cmd.decode()).encode()
-                #print("result %s" % result)
                 client.send(result)
             client.close()
         server.close()
@@ -210,3 +207,4 @@ class Consoler(metaclass=SingletonABCMeta):
     def enrich_parser_arguments(self):
         self.parser.add_argument("--console", help="start a console. ", action="store_true")
         self.parser.add_argument("--console-host", help="console host. ", default="")
+        self.parser.add_argument("--console-port", type=int, help="console port. ", default=7878)
