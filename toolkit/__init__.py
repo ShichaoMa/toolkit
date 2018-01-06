@@ -598,11 +598,28 @@ def cache_property(func):
     return wrapper
 
 
+class cache_prop(object):
+    """
+    描述符版缓存属性
+    """
+    def __init__(self, func):
+        self.func = func
+
+    def __get__(self, instance, owner):
+        if self.func.__name__ in instance.__dict__:
+            return instance.__dict__[self.func.__name__]
+        else:
+            return instance.__dict__.setdefault(self.func.__name__, self.func(instance))
+
+    def __set__(self, instance, value):
+        raise AttributeError("{} is readonly.".format(self.func.__name__))
+
+
 def cache_for(interval=10):
     """
     缓存属性，指定缓存失效时间
     :param interval:缓存失效时间 second
-    :return:
+    :return:`
     """
     def cache_property(func):
         @property
