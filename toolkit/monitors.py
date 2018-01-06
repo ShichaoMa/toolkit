@@ -70,6 +70,7 @@ class LoggingMonitor(object):
     """
     name = "logging_monitor"
     wrapper = SettingsWrapper()
+    default_settings = "settings"
     _logger = None
 
     def __init__(self, settings, localsettings=None):
@@ -77,7 +78,7 @@ class LoggingMonitor(object):
         if isinstance(settings, dict):
             self.settings = settings
         else:
-            self.settings = self.wrapper.load(local=localsettings, default=settings)
+            self.settings = self.wrapper.load(local=localsettings, default=settings or self.default_settings)
 
     def set_logger(self, logger=None):
         self._logger = logger
@@ -89,7 +90,7 @@ class LoggingMonitor(object):
         return self._logger
 
     def log_err(self, func_name, *args):
-        self.logger.error("Error in %s: %s. "%(func_name, "".join(traceback.format_exception(*args))))
+        self.logger.error("Error in %s: %s. " % (func_name, "".join(traceback.format_exception(*args))))
         return True
 
 
@@ -100,14 +101,14 @@ class Service(LoggingMonitor, Consoler, ParallelMonitor):
     name = "Service"
     parser = None
     args = None
-    
+
     def __init__(self):
         self.args = self.parse_args()
         super(Service, self).__init__(self.args.settings, self.args.localsettings)
 
     def enrich_parser_arguments(self):
         super(Service, self).enrich_parser_arguments()
-        self.parser.add_argument("-s", "--settings", help="Setting module. ", default="settings")
+        self.parser.add_argument("-s", "--settings", help="Setting module. ")
         self.parser.add_argument("-ls", "--localsettings", help="Local setting module. ", default="localsettings")
 
     def parse_args(self, daemon_log_path='/dev/null'):
