@@ -16,7 +16,7 @@ from queue import Empty
 from itertools import zip_longest
 from functools import wraps, reduce, partial
 
-__version__ = '1.3.6'
+__version__ = '1.3.8'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes

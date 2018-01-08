@@ -1,6 +1,9 @@
 import copy
 
+from threading import RLock
 from collections.abc import MutableSet
+
+from . import thread_safe_for_method_in_class
 
 
 class HashSet(MutableSet):
@@ -95,3 +98,23 @@ class HashSet(MutableSet):
         return "{%s}"%self.join_str(self.data).strip(",")
 
     __repr__ = __str__
+
+
+class ThreadSafeSet(MutableSet):
+
+    def __init__(self, *args, **kwargs):
+        self._data = set(*args, **kwargs)
+        self.lock = RLock()
+
+    @thread_safe_for_method_in_class
+    def add(self, value):
+        return self._data.add(value)
+
+    @thread_safe_for_method_in_class
+    def discard(self, value):
+        raise self._data.discard(value)
+
+    @thread_safe_for_method_in_class
+    def pop_all(self):
+        while len(self._data):
+            yield self.pop()
