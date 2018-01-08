@@ -10,8 +10,10 @@ import socket
 import psutil
 import signal
 import logging
+import warnings
 
 from queue import Empty
+from itertools import zip_longest
 from functools import wraps, reduce, partial
 
 __version__ = '1.3.6'
@@ -450,13 +452,6 @@ def free_port():
     return port
 
 
-def _catch(li, index, default):
-    try:
-        return li[index]
-    except IndexError:
-        return default
-
-
 def zip(*args, default=""):
     """
     enhance zip function
@@ -464,12 +459,8 @@ def zip(*args, default=""):
     :param default: ""
     :return: [("a", 1), ("b", 2), ("c", "")]
     """
-    max_length = max(map(lambda x: len(x), args))
-    new_list = list()
-    for i in range(max_length):
-        new_ele = [_catch(li, i, default=default) for li in args]
-        new_list.append(new_ele)
-    return new_list
+    warnings.warn("zip is a deprecated alias, use itertools.zip_longest instead.", DeprecationWarning, 2)
+    return zip_longest(*args, fillvalue=default)
 
 
 def thread_safe(lock):
