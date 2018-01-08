@@ -27,16 +27,15 @@ def debugger():
         debug = eval(os.environ.get("DEBUG"))
     except Exception:
         debug = False
+
     if debug:
         d = pdb.Pdb()
         d.set_trace( sys._getframe().f_back)
 
 
 def arg_to_iter(arg):
-    """Convert an argument to an iterable. The argument can be a None, single
-    value, or an iterable.
-
-    Exception: if arg is a dict, [arg] will be returned
+    """
+    将非可迭代对象转换成可迭代对象
     """
     if arg is None:
         return []
@@ -139,8 +138,7 @@ def wrap_key(json_str, key_pattern=re.compile(r"([a-zA-Z_]\w*)[\s]*\:")):
     :param key_pattern:
     :return:
     """
-    json_str = key_pattern.sub('"\g<1>":', json_str)
-    return json_str
+    return key_pattern.sub('"\g<1>":', json_str)
 
 
 def safely_json_loads(json_str, defaulttype=dict, escape=True):
@@ -186,6 +184,7 @@ def replace_quote(json_str):
     """
     if not isinstance(json_str, str):
         return json_str
+
     double_quote = []
     new_lst = []
     for index, val in enumerate(json_str):
@@ -194,7 +193,7 @@ def replace_quote(json_str):
                 double_quote.pop(0)
             else:
                 double_quote.append(val)
-        if val== "'" and json_str[index-1] != "\\":
+        if val == "'" and json_str[index-1] != "\\":
             if not double_quote:
                 val = '"'
         new_lst.append(val)
@@ -227,9 +226,7 @@ def urldecode(query):
     :param query:
     :return:
     """
-    if not query.strip():
-        return dict()
-    return dict(x.split("=") for x in query.strip().split("&"))
+    return dict(x.split("=") for x in query.strip().split("&")) if query.strip() else dict()
 
 
 def re_search(regex, text, dotall=True, default=""):
@@ -243,18 +240,14 @@ def re_search(regex, text, dotall=True, default=""):
     """
     if isinstance(text, bytes):
         text = text.decode("utf-8")
-
     if not isinstance(regex, list):
         regex = [regex]
-
     for rex in regex:
         rex = (re.compile(rex, re.DOTALL) if dotall else re.compile(rex)) if isinstance(rex, str) else rex
         match_obj = rex.search(text)
-
         if match_obj is not None:
             t = match_obj.group(1).replace('\n', '')
             return t
-
     return default
 
 
@@ -267,7 +260,6 @@ class P22P3Encoder(json.JSONEncoder):
             return obj.decode("utf-8")
         if isinstance(obj, (types.GeneratorType, map, filter)):
             return list(obj)
-        # Let the base class default method raise the TypeError
         return json.JSONEncoder.default(self, obj)
 
 
@@ -297,14 +289,12 @@ def retry_wrapper(retry_times, exception=Exception, error_handler=None, interval
                         raise
                     time.sleep(interval)
         return wrapper
-
     return out_wrapper
 
 
 def timeout(timeout_time, default):
     """
-    Decorate a method so it is required to execute in a given time period,
-    or return a default value.
+    装饰一个方法，用来限制其执行时间，超时后返回default，只能在主线程使用。
     :param timeout_time:
     :param default:
     :return:
@@ -318,7 +308,6 @@ def timeout(timeout_time, default):
                 raise DecoratorTimeout()
 
             old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-            # triger alarm in timeout_time seconds
             signal.alarm(timeout_time)
             try:
                 retval = f(*args)
@@ -328,9 +317,7 @@ def timeout(timeout_time, default):
                 signal.signal(signal.SIGALRM, old_handler)
             signal.alarm(0)
             return retval
-
         return f2
-
     return timeout_function
 
 
@@ -350,11 +337,7 @@ def replace_dot(data):
     :param data:
     :return:
     """
-    new_data = {}
-    for k, v in data.items():
-        new_data[k.replace(".", "_")] = v
-
-    return new_data
+    return dict((k.replace(".", "_"), v) for k, v in data.items())
 
 
 def groupby(it, key):
@@ -368,19 +351,14 @@ def groupby(it, key):
     return groups
 
 
-def parse_cookie(string):
+def parse_cookie(string, regex=re.compile(r'([^=]+)=([^\;]+);?\s?')):
     """
     解析cookie
     :param string:
+    :param regex: 正则表达式
     :return:
     """
-    results = re.findall('([^=]+)=([^\;]+);?\s?', string)
-    my_dict = {}
-
-    for item in results:
-        my_dict[item[0]] = item[1]
-
-    return my_dict
+    return dict((k, v) for k, v in regex.findall(string))
 
 
 def async_produce_wrapper(producer, logger, batch_size=10):
@@ -454,7 +432,7 @@ def free_port():
 
 def zip(*args, default=""):
     """
-    enhance zip function
+     zip按最长的迭代对象返回，其余填充default
     :param args: ["a", "b", "c"], [1, 2]
     :param default: ""
     :return: [("a", 1), ("b", 2), ("c", "")]
@@ -516,8 +494,7 @@ def thread_safe_for_method_in_class(func):
     """
     @wraps(func)
     def wrapper(*args, **kwargs):
-        self = args[0]
-        with self.lock:
+        with args[0].lock:
             return func(*args, **kwargs)
     return wrapper
 
