@@ -114,7 +114,8 @@ class Service(LoggingMonitor, Consoler, ParallelMonitor):
     def parse_args(self, daemon_log_path='/dev/null'):
         self.parser = ArgumentParser(conflict_handler="resolve")
         self.enrich_parser_arguments()
-        return common_stop_start_control(self.parser, daemon_log_path, 2)
+        return common_stop_start_control(self.parser, daemon_log_path, 2,
+                                         bool(eval(os.environ.get("DEBUG", "0").lower().capitalize())))
 
 
 class ProxyPool(LoggingMonitor):

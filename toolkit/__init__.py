@@ -16,7 +16,7 @@ from queue import Empty
 from itertools import zip_longest
 from functools import wraps, reduce, partial
 
-__version__ = '1.3.8'
+__version__ = '1.3.9'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
@@ -24,7 +24,7 @@ _ITERABLE_SINGLE_VALUES = dict, str, bytes
 
 def debugger():
     try:
-        debug = eval(os.environ.get("DEBUG"))
+        debug = bool(eval(os.environ.get("DEBUG", "0").lower().capitalize()))
     except Exception:
         debug = False
 

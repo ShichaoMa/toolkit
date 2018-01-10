@@ -57,12 +57,13 @@ def _t_raw_input(alive_pid):
     return raw_input("The process with pid %s is running, restart it? y/n: " % alive_pid)
 
 
-def common_stop_start_control(parser, monitor_log_path, wait=2):
+def common_stop_start_control(parser, monitor_log_path, wait=2, allow_multi=False):
     """
     开启关闭的公共实现
     :param parser: 一个argparse命令行参数解析对象，其它参数请调用些函数之前声明
     :param monitor_log_path: 如果通过--daemon 守护进程的方式启动，需要提供守护进程的stdout, stderr的文件路径
     :param wait: 轮循发起关闭信号的间隔时间
+    :param allow_multi: 是否允许开启多个进程
     :return: argparse的解析结果对象
     """
     parser.add_argument("-d", "--daemon", action="store_true", default=False)
@@ -87,7 +88,7 @@ def common_stop_start_control(parser, monitor_log_path, wait=2):
         print("Start new process. ")
     else:
         alive_pid = _check_status(filter_process_name, ignore_pid=[pid])
-        if alive_pid:
+        if alive_pid and not allow_multi:
             result = _t_raw_input(alive_pid)
             if result.lower() in ["y", "yes"]:
                 stop(filter_process_name, sys.argv[0], wait, ignore_pid=[pid])
