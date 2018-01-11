@@ -16,7 +16,7 @@ from queue import Empty
 from itertools import zip_longest
 from functools import wraps, reduce, partial
 
-__version__ = '1.4.0'
+__version__ = '1.4.1'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
@@ -456,6 +456,25 @@ def thread_safe(lock):
     return decorate
 
 
+def thread_safe_for_method_in_class(func):
+    warnings.warn("thread_safe_for_method_in_class is a deprecated alias, use thread_safe_for_method instead.",
+                  DeprecationWarning, 2)
+    return thread_safe_for_method(func)
+
+
+def thread_safe_for_method(func):
+    """
+    对类中的方法进行线程安全包装
+    :param func:
+    :return:
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        with args[0].lock:
+            return func(*args, **kwargs)
+    return wrapper
+
+
 def call_later(callback, call_args=tuple(), immediately=True, interval=1):
     """
     应用场景：
@@ -484,19 +503,6 @@ def call_later(callback, call_args=tuple(), immediately=True, interval=1):
                         self.__dict__["last_call_time"] = now
         return wrapper
     return decorate
-
-
-def thread_safe_for_method_in_class(func):
-    """
-    对类中的方法进行线程安全包装
-    :param func:
-    :return:
-    """
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        with args[0].lock:
-            return func(*args, **kwargs)
-    return wrapper
 
 
 def get_ip():
@@ -540,10 +546,10 @@ class LazyDict(object):
         self.turn = turn
 
     def get(self, item):
-        return self.dict.setdefault(item, self.turn(self.dict))
+        return self.dict.setdefault(item, self.turn(item, self.dict))
 
     def __getitem__(self, item):
-           return self.get(item)
+        return self.get(item)
 
     def to_dict(self):
         return self.dict

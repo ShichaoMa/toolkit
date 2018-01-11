@@ -8,6 +8,8 @@
 """
 from abc import ABCMeta
 
+__all__ = ["Singleton", "SingletonABCMeta"]
+
 
 class Singleton(type):
     """

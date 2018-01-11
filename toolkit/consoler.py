@@ -7,6 +7,8 @@ from code import InteractiveInterpreter
 
 from .singleton import SingletonABCMeta
 
+__all__ = ["Consoler"]
+
 _local = local()
 _displayhook = sys.displayhook
 

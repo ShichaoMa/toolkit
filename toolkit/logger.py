@@ -11,6 +11,8 @@ from pythonjsonlogger.jsonlogger import JsonFormatter
 from . import _find_caller_name
 from .singleton import Singleton
 
+__all__ = ["UDPLogstashHandler", "Logger"]
+
 
 def extras_wrapper(self, item):
     """

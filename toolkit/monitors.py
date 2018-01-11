@@ -13,11 +13,11 @@ from kafka import KafkaConsumer, KafkaProducer
 from . import call_later
 from .logger import Logger
 from .frozen import Frozen
+from .daemon import daemonize
 from .consoler import Consoler
 from .singleton import Singleton
 from .managers import ExceptContext
 from .settings import SettingsWrapper
-from .daemon_ctl import common_stop_start_control
 
 __all__ = ["ParallelMonitor", "LoggingMonitor", "Service", "ProxyPool", "ItemConsumer", "ItemProducer"]
 
@@ -115,8 +115,7 @@ class Service(LoggingMonitor, Consoler, ParallelMonitor):
     def parse_args(self, daemon_log_path='/dev/null'):
         self.parser = ArgumentParser(conflict_handler="resolve")
         self.enrich_parser_arguments()
-        return common_stop_start_control(self.parser, daemon_log_path, 2,
-                                         bool(eval(os.environ.get("DEBUG", "0").lower().capitalize())))
+        return daemonize(self.parser, daemon_log_path, 2, bool(eval(os.environ.get("DEBUG", "0").lower().capitalize())))
 
 
 class ProxyPool(LoggingMonitor):
@@ -131,19 +130,19 @@ class ProxyPool(LoggingMonitor):
         """
         super(ProxyPool, self).__init__(settings)
         self.protocols = self.settings.get("PROTOCOLS", "http,https").split(",")
-        self.redis_conn = Redis(self.settings.get("REDIS_HOST"), self.settings.get_int("REDIS_PORT", 6379))
+        self.redis_conn = Redis(self.settings.REDIS_HOST, self.settings.get_int("REDIS_PORT", 6379))
         self.proxy_sets = self.settings.get("PROXY_SETS", "proxy_set").split(",")
-        self.account_password = self.settings.get("PROXY_ACCOUNT_PASSWORD")
+        self.account_password = self.settings.PROXY_ACCOUNT_PASSWORD
         self.proxy = {}
 
     def proxy_choice(self):
         """
-        顺序循环选取代理
+        随机选取代理
         :return: 代理
         """
         proxy = self.redis_conn.srandmember(random.choice(self.proxy_sets))
         if proxy:
-            proxy_str = "http://%s%s"%(self.account_password+"@"if self.account_password else "", proxy.decode())
+            proxy_str = "http://%s%s" % (self.account_password+"@"if self.account_password else "", proxy.decode())
             self.proxy = dict(zip(self.protocols, repeat(proxy_str)))
         return self.proxy
 
@@ -161,7 +160,7 @@ class ItemConsumer(Service):
         with ExceptContext(Exception, errback=lambda *args: self.stop()):
             self.consumer = KafkaConsumer(self.topic_in,
                                           group_id=self.consumer_id,
-                                          bootstrap_servers=self.settings.get("KAFKA_HOSTS").split(","),
+                                          bootstrap_servers=self.settings.KAFKA_HOSTS.split(","),
                                           enable_auto_commit=False,
                                           consumer_timeout_ms=1000)
 
@@ -221,7 +220,7 @@ class ItemProducer(Service):
         super(ItemProducer, self).__init__()
         self.topic_out = self.args.topic_out
         with ExceptContext(Exception, errback=lambda *args: self.stop()):
-            self.producer = KafkaProducer(bootstrap_servers=self.settings['KAFKA_HOSTS'].split(","), retries=3)
+            self.producer = KafkaProducer(bootstrap_servers=self.settings.KAFKA_HOSTS.split(","), retries=3)
 
     def produce_callback(self, value):
         self.logger.debug("Product future success: %s"%value)

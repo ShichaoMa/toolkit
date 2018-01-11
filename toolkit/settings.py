@@ -60,6 +60,8 @@ from .frozen import Frozen
 from collections import UserDict
 from collections.abc import MutableMapping, MutableSet, MutableSequence
 
+__all__ = ["Settings", "SettingsWrapper"]
+
 
 class Settings(UserDict):
     """

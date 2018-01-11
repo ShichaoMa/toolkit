@@ -1,6 +1,5 @@
 # -*- coding:utf-8 -*-
 import os
-import time
 import glob
 import json
 import struct
@@ -8,8 +7,10 @@ import struct
 from threading import RLock
 from abc import ABC, abstractmethod
 
-from . import thread_safe_for_method_in_class, call_later
+from . import thread_safe_for_method, call_later
 from .managers import ExceptContext
+
+__all__ = ["Queue", "RedisQueue", "FifoDiskQueue"]
 
 
 class Queue(ABC):
@@ -47,18 +48,18 @@ class RedisQueue(Queue):
         self.redis_conn = redis_conn
         self.key = key
 
-    @thread_safe_for_method_in_class
+    @thread_safe_for_method
     def push(self, *strings):
         self.redis_conn.rpush(self.key, *strings)
 
-    @thread_safe_for_method_in_class
+    @thread_safe_for_method
     def pop(self):
         return self.redis_conn.lpop(self.key)
 
     def __len__(self):
         return self.redis_conn.llen(self.key)
 
-    @thread_safe_for_method_in_class
+    @thread_safe_for_method
     def rid(self, count):
         pipe = self.redis_conn.pipeline()
         pipe.multi()
@@ -71,42 +72,6 @@ class RedisQueue(Queue):
 
     def close(self):
         pass
-
-
-class RedisHashSet(object):
-    """
-    使用hash和zset管理数据
-    """
-    def __init__(self, redis_conn, key):
-        self.redis_conn = redis_conn
-        self.hash_key = "%s_hash"%key
-        self.set_key = "%s_set"%key
-        self.lock = RLock()
-
-    @thread_safe_for_method_in_class
-    def push(self, message, id, delay):
-        self.redis_conn.zadd(self.set_key, id, delay)
-        self.redis_conn.hset(self.hash_key, id, message)
-
-    @thread_safe_for_method_in_class
-    def rid_all(self):
-        pipe = self.redis_conn.pipeline()
-        pipe.watch(self.set_key)
-        pipe.multi()
-        pipe.zrangebyscore(self.set_key, 0, time.time() * 1000).zremrangebyscore(
-            self.set_key, 0, time.time() * 1000)
-        result, count = pipe.execute()
-        return result and [message for message in self.redis_conn.hmget(self.hash_key, result) if message]
-
-    def hash_len(self):
-        return self.redis_conn.hlen(self.hash_key)
-
-    def set_len(self):
-        return self.redis_conn.zcard(self.set_key)
-
-    def __delitem__(self, key):
-        self.redis_conn.hdel(self.hash_key, key)
-        self.redis_conn.zrem(self.set_key, key)
 
 
 class FifoDiskQueue(Queue):
@@ -126,7 +91,7 @@ class FifoDiskQueue(Queue):
         self.tailf = self._open_chunk(self.info['tail'][0])
         os.lseek(self.tailf.fileno(), self.info['tail'][2], os.SEEK_SET)
 
-    @thread_safe_for_method_in_class
+    @thread_safe_for_method
     @call_later(callback="_save_info")
     def push(self, *strings):
         for string in strings:
@@ -161,7 +126,7 @@ class FifoDiskQueue(Queue):
                 break
         return messages
 
-    @thread_safe_for_method_in_class
+    @thread_safe_for_method
     @call_later(callback="_save_info", immediately=False)
     def pop(self):
         tnum, tcnt, toffset = self.info['tail']

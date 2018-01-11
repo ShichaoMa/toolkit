@@ -1,5 +1,7 @@
 from collections.abc import MutableSequence, MutableMapping, MutableSet
 
+__all__ = ["Frozen"]
+
 
 class Frozen(MutableSequence, MutableMapping):
     """
