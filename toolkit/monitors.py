@@ -12,11 +12,12 @@ from kafka import KafkaConsumer, KafkaProducer
 
 from . import call_later
 from .logger import Logger
+from .frozen import Frozen
+from .consoler import Consoler
 from .singleton import Singleton
 from .managers import ExceptContext
 from .settings import SettingsWrapper
 from .daemon_ctl import common_stop_start_control
-from .consoler import Consoler
 
 __all__ = ["ParallelMonitor", "LoggingMonitor", "Service", "ProxyPool", "ItemConsumer", "ItemProducer"]
 
@@ -73,12 +74,12 @@ class LoggingMonitor(object):
     default_settings = "settings"
     _logger = None
 
-    def __init__(self, settings, localsettings=None):
+    def __init__(self, settings, local_settings=None):
         super(LoggingMonitor, self).__init__()
-        if isinstance(settings, dict):
+        if isinstance(settings, Frozen):
             self.settings = settings
         else:
-            self.settings = self.wrapper.load(local=localsettings, default=settings or self.default_settings)
+            self.settings = self.wrapper.load(local=local_settings, default=settings or self.default_settings)
 
     def set_logger(self, logger=None):
         self._logger = logger

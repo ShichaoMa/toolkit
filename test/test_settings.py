@@ -1,12 +1,11 @@
-from ..toolkit.settings import SettingsWrapper
-import settings
+from toolkit.settings import SettingsWrapper
 import json
 
 
 def test_settings():
     sw = SettingsWrapper()
-    set = sw.load(default=settings)
-    print(json.dumps(set, indent=1))
+    set = sw.load(default={"SPEED", 1})
+    print(set)
     print(set.get_float("SPEED"))
 
 

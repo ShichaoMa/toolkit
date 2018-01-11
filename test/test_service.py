@@ -6,6 +6,8 @@ from toolkit.monitors import Service
 class Test(Service):
     def __init__(self):
         super(Test, self).__init__()
+        from toolkit import debugger
+        debugger()
         self.bbbb = self.args.bbbb
         print(self.bbbb)
 

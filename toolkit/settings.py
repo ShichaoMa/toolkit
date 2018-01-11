@@ -1,11 +1,67 @@
+"""
+settings模块使用方法
+In [3]: from toolkit.settings import SettingsWrapper
+
+In [4]: sw = SettingsWrapper()
+
+In [5]: settings = sw.load({"a": 1}， "settings")
+
+In [6]: settings
+Out[6]: {'AUTHOR': '夏洛之枫', 'DB': 'sqlite', 'a': 1}
+
+In [8]: settings.a
+Out[8]: 1
+
+In [9]: settings["a"]
+Out[9]: 1
+
+In [10]: settings.get("a")
+Out[10]: 1
+
+In [13]: import os
+
+In [15]: os.environ["b"] = "3"
+
+In [16]: settings.get_int("b", 11)
+Out[16]: 3
+
+In [18]: settings2 = sw.load({"a": 1, "c": {"d": [3,4,5,6], "e": {"a", 4, 5,6}}})
+
+In [19]: settings2 is settings
+Out[19]: False
+
+In [21]: settings2.a
+Out[21]: 1
+
+In [22]: settings2.b
+Out[22]: '3'
+
+In [23]: settings2.c
+Out[23]: {'d': [3, 4, 5, 6], 'e': {4, 5, 6, 'a'}}
+
+In [24]: type(settings2.c)
+Out[24]: toolkit.frozen.Frozen
+
+In [26]: settings2.c.e
+Out[26]: {4, 5, 6, 'a'}
+
+In [27]: type(settings2.c.e)
+Out[27]: set
+
+In [28]: type(settings2.c.d)
+Out[28]: toolkit.frozen.Frozen
+"""
 import os
 import types
 import importlib
 
 from . import duplicate
+from .frozen import Frozen
+from collections import UserDict
+from collections.abc import MutableMapping, MutableSet, MutableSequence
 
 
-class Settings(dict):
+class Settings(UserDict):
     """
     settings，首先从环境变量从获取
     """
@@ -54,9 +110,11 @@ class SettingsWrapper(object):
         '__name__',
         '__cached__',
     ]
+    settings = None
 
-    def __init__(self):
-        self.my_settings = Settings()
+    def __init__(self, settings_type=Settings):
+        super(SettingsWrapper, self).__init__()
+        self.settings_type = settings_type
 
     def load(self, local='localsettings', default='settings'):
         """
@@ -65,10 +123,17 @@ class SettingsWrapper(object):
         :param default: 默认配置模块
         :return: 配置信息字典
         """
-        self._load_defaults(default)
-        self._load_custom(local)
+        self.settings = self.settings_type()
+        if isinstance(default, MutableMapping):
+            self.merge(self.settings, default)
+        else:
+            self._load_defaults(default)
 
-        return self.my_settings
+        if isinstance(local, MutableMapping):
+            self.merge(self.settings, local)
+        else:
+            self._load_custom(local)
+        return Frozen(self.settings)
 
     def load_from_string(self, settings_string='', module_name='customsettings'):
         """
@@ -84,11 +149,9 @@ class SettingsWrapper(object):
         except TypeError:
             print("Could not import settings")
         try:
-            self.my_settings.update(self._convert_to_dict(mod))
+            self.settings.update(self._convert_to_dict(mod))
         except ImportError:
             print("Settings unable to be loaded")
-
-        return self.my_settings
 
     def _load_defaults(self, default='settings'):
         """
@@ -103,7 +166,7 @@ class SettingsWrapper(object):
                 settings = importlib.import_module(default)
             else:
                 settings = default
-            self.my_settings.update(self._convert_to_dict(settings))
+            self.settings.update(self._convert_to_dict(settings))
         except ImportError:
             print("No default settings found")
 
@@ -125,7 +188,7 @@ class SettingsWrapper(object):
             new_settings.update(self._convert_to_dict(settings))
         except ImportError:
             print("No override settings found")
-        self.merge(self.my_settings, new_settings)
+        self.merge(self.settings, new_settings)
 
     def merge(self, settings, new_settings):
         """
@@ -138,11 +201,11 @@ class SettingsWrapper(object):
             value = settings.get(key)
             new_value = new_settings[key]
             if type(value) == type(new_value):
-                if isinstance(value, dict):
+                if isinstance(value, MutableMapping):
                     self.merge(value, new_value)
-                elif isinstance(value, set):
+                elif isinstance(value, MutableSet):
                     value.update(new_value)
-                elif isinstance(value, list):
+                elif isinstance(value, MutableSequence):
                     value.extend(new_value)
                     settings[key] = duplicate(value, reverse=True)
                 else:
@@ -161,7 +224,7 @@ class SettingsWrapper(object):
             if key in self.ignore:
                 continue
             value = getattr(setting, key)
-            if isinstance(value, (bytes, str, list, set, dict, int, float, bool)):
+            if isinstance(value, (bytes, str, MutableSet, MutableSequence, MutableMapping, int, float, bool)):
                 the_dict[key] = value
         return the_dict
 
