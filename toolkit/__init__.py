@@ -16,7 +16,7 @@ from queue import Empty
 from itertools import zip_longest
 from functools import wraps, reduce, partial
 
-__version__ = '1.4.1'
+__version__ = '1.4.2'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
@@ -122,13 +122,16 @@ def encode(value, encoding="utf-8"):
 
 def rid(value, old, new):
     """
-    去掉指定字段
+    去掉匹配成功的字段
     :param value:
-    :param old:
+    :param old: 可以为正则表达示或字符串
     :param new:
     :return:
     """
-    return value.replace(old, new)
+    if hasattr(old, "sub"):
+        return old.sub(new, value)
+    else:
+        return value.replace(old, new)
 
 
 def wrap_key(json_str, key_pattern=re.compile(r"([a-zA-Z_]\w*)[\s]*\:")):
