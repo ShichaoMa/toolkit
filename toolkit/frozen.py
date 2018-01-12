@@ -24,7 +24,7 @@ class Frozen(MutableSequence, MutableMapping):
         else:
             prop_val = self.json.get(item)
             if prop_val is None:
-                raise KeyError(item)
+                raise AttributeError(item)
             elif isinstance(prop_val, (list, dict)):
                 return self.__class__(prop_val)
             else:
