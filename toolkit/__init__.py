@@ -7,7 +7,6 @@ import time
 import json
 import types
 import socket
-import psutil
 import signal
 import logging
 import warnings
@@ -16,7 +15,7 @@ from queue import Empty
 from itertools import zip_longest
 from functools import wraps, reduce, partial
 
-__version__ = '1.4.3'
+__version__ = '1.4.5'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
@@ -191,16 +190,23 @@ def replace_quote(json_str):
     double_quote = []
     new_lst = []
     for index, val in enumerate(json_str):
-        if val == '"' and json_str[index-1] != "\\":
+        if val == '"' and not len(_get_last_backslash(json_str[:index])) % 2:
             if double_quote:
                 double_quote.pop(0)
             else:
                 double_quote.append(val)
-        if val == "'" and json_str[index-1] != "\\":
+        if val == "'" and not len(_get_last_backslash(json_str[:index])) % 2:
             if not double_quote:
                 val = '"'
         new_lst.append(val)
     return "".join(new_lst)
+
+
+def _get_last_backslash(strings, regex=re.compile(r"\\*$")):
+    mth = regex.search(strings)
+    if mth:
+        return mth.group()
+    return ""
 
 
 def format_html_string(html):
@@ -513,6 +519,11 @@ def get_ip():
     获取局域网ip
     :return:
     """
+    try:
+        import psutil
+    except ImportError:
+        warnings.warn("get_ip function depends on psutil, try: pip install psutil. ")
+        raise
     netcard_info = []
     info = psutil.net_if_addrs()
     for k,v in info.items():
@@ -526,7 +537,7 @@ def get_ip():
 
 def _find_caller_name(is_func=False):
     frame = logging.currentframe()
-    src_filename = os.path.normcase(get_ip.__code__.co_filename)
+    src_filename = os.path.normcase(call_later.__code__.co_filename)
     while True:
         co = frame.f_code
         filename = os.path.normcase(co.co_filename)
@@ -567,11 +578,10 @@ def cache_property(func):
     @property
     @wraps(func)
     def wrapper(*args, **kwargs):
-        self = args[0]
         prop_name = "_%s"%func.__name__
-        if prop_name not in self.__dict__:
-            self.__dict__[prop_name] = func(*args, **kwargs)
-        return self.__dict__[prop_name]
+        if prop_name not in args[0].__dict__:
+            args[0].__dict__[prop_name] = func(*args, **kwargs)
+        return args[0].__dict__[prop_name]
     return wrapper
 
 
@@ -598,19 +608,29 @@ def cache_for(interval=10):
     :param interval:缓存失效时间 second
     :return:`
     """
-    def cache_property(func):
+    def outer(func):
         @property
         @wraps(func)
-        def wrapper(*args, **kwargs):
-            self = args[0]
-            prop_name = "_%s"%func.__name__
+        def inner(*args, **kwargs):
+            prop_name = "_%s" % func.__name__
             prop_start_name = "%s_cache_start_time" % prop_name
-            if time.time() - self.__dict__.get(prop_start_name, 0) > interval:
-                self.__dict__[prop_name] = func(*args, **kwargs)
-                self.__dict__["%s_cache_start_time" % prop_name] = time.time()
-            return self.__dict__[prop_name]
-        return wrapper
+            if time.time() - args[0].__dict__.get(prop_start_name, 0) > interval:
+                args[0].__dict__[prop_name] = func(*args, **kwargs)
+                args[0].__dict__["%s_cache_start_time" % prop_name] = time.time()
+            return args[0].__dict__[prop_name]
+        return inner
     return cache_property
+
+
+class SafeValue(object):
+    """
+    获取某个对象的某个属性值，如果该属性不存在，则返回该对象
+    """
+    def __init__(self, node):
+        self.node = node
+
+    def __getattr__(self, item):
+        return getattr(self.node, item, self.node)
 
 
 if __name__ == "__main__":

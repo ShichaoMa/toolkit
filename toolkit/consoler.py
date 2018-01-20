@@ -6,6 +6,7 @@ from threading import Thread, local
 from code import InteractiveInterpreter
 
 from .singleton import SingletonABCMeta
+from .managers import ExceptContext
 
 __all__ = ["Consoler"]
 
@@ -191,14 +192,23 @@ class Consoler(metaclass=SingletonABCMeta):
         ci = CustomInteractiveInterpreter(locals)
         _local._current_ipy = ci
         while self.alive:
-            client, addr = server.accept()
-            while self.alive:
-                cmd = client.recv(102400)
-                if cmd == b"exit" or cmd == b"exit()" or not cmd:
-                    break
-                result = ci.runsource(cmd.decode()).encode()
-                client.send(result)
-            client.close()
+            client = None
+            try:
+                client, addr = server.accept()
+                while self.alive:
+                    cmd = client.recv(102400)
+                    if cmd == b"exit" or cmd == b"exit()" or not cmd:
+                        break
+                    result = ci.runsource(cmd.decode()).encode()
+                    client.send(result)
+            except Exception as e:
+                print(e)
+            finally:
+                if client:
+                    try:
+                        client.close()
+                    except:
+                        pass
         server.close()
 
     @property
