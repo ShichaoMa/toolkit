@@ -6,6 +6,7 @@ import pdb
 import time
 import json
 import types
+import ctypes
 import socket
 import signal
 import logging
@@ -631,6 +632,46 @@ class SafeValue(object):
 
     def __getattr__(self, item):
         return getattr(self.node, item, self.node)
+
+
+def int_overflow(val):
+    """
+    类似js对于超过int范围的数转换成负数
+    :param val:
+    :return:
+    """
+    maxint = 2147483647
+    if not -maxint-1 <= val <= maxint:
+        val = (val + (maxint + 1)) % (2 * (maxint + 1)) - maxint - 1
+        # import struct
+        #val = struct.unpack("i", struct.pack("l", val)[:4])[0] # 这种方式性能差一点
+    return val
+
+
+def unsigned_right_shitf(n, i):
+    """
+    无符号右移python实现
+    :param n:
+    :param i:
+    :return:
+    """
+    # 数字小于0，则转为32位无符号uint
+    if n < 0:
+        n = ctypes.c_uint32(n).value
+    # 正常位移位数是为正数，但是为了兼容js之类的，负数就右移变成左移好了
+    if i < 0:
+        return -int_overflow(n << abs(i))
+    return int_overflow(n >> i)
+
+
+def shift_left_for_js(num, count):
+    """位运算左移js版"""
+    return int_overflow(num << count)
+
+
+def shift_right_for_js(num, count):
+    """位运算左移js版"""
+    return int_overflow(num >> count)
 
 
 if __name__ == "__main__":

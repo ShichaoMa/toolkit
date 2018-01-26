@@ -1,11 +1,13 @@
-from translate import TranslateAdapter
+from ..monitors import ProxyPool
+from .translate_adapter import TranslateAdapter
 
-from .monitors import ProxyPool
+
+__all__ = ["Translator"]
 
 
 class Translator(ProxyPool, TranslateAdapter):
     """
-        翻译类
+        基于代理池的翻译类
     """
     name = "translator"
     web_site = None
@@ -17,3 +19,4 @@ class Translator(ProxyPool, TranslateAdapter):
         self.web_site = self.settings.get("WEBSITE", "baidu,qq,google").split(",")
         self.retry_times = self.settings.get("TRANSLATE_RETRY_TIMES", 10)
         self.translate_timeout = self.settings.get("TRANSLATE_TIMEOUT", 10)
+        self.headers = self.settings.get("HEADERS") or self.headers

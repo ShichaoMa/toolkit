@@ -74,7 +74,7 @@ class LoggingMonitor(object):
     default_settings = "settings"
     _logger = None
 
-    def __init__(self, settings, local_settings=None):
+    def __init__(self, settings=None, local_settings=None):
         super(LoggingMonitor, self).__init__()
         if isinstance(settings, Frozen):
             self.settings = settings
@@ -128,11 +128,11 @@ class ProxyPool(LoggingMonitor):
         proxy
         :param settings:
         """
-        super(ProxyPool, self).__init__(settings)
+        super(ProxyPool, self).__init__(local_settings=settings)
         self.protocols = self.settings.get("PROTOCOLS", "http,https").split(",")
-        self.redis_conn = Redis(self.settings.REDIS_HOST, self.settings.get_int("REDIS_PORT", 6379))
+        self.redis_conn = Redis(self.settings.get("REDIS_HOST", "0.0.0.0"), self.settings.get_int("REDIS_PORT", 6379))
         self.proxy_sets = self.settings.get("PROXY_SETS", "proxy_set").split(",")
-        self.account_password = self.settings.PROXY_ACCOUNT_PASSWORD
+        self.account_password = self.settings.get("PROXY_ACCOUNT_PASSWORD", "")
         self.proxy = {}
 
     def proxy_choice(self):
