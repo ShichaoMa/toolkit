@@ -5,7 +5,7 @@ except:
     from distutils.core import setup
 
 
-VERSION = '1.4.6'
+VERSION = '1.4.8'
 
 AUTHOR = "cn"
 
@@ -26,7 +26,7 @@ KEYWORDS = "tools function"
 
 LICENSE = "MIT"
 
-PACKAGES = ["toolkit"]
+PACKAGES = ["toolkit", "toolkit.translator"]
 
 setup(
     name=NAME,
@@ -45,7 +45,7 @@ setup(
     url=URL,
     license=LICENSE,
     packages=PACKAGES,
-    install_requires=["python-json-logger", "redis", "kafka-python", "translate-html"],
+    install_requires=["python-json-logger", "redis", "kafka-python"],
     include_package_data=True,
     zip_safe=True,
 )
