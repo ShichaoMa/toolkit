@@ -85,9 +85,12 @@ def qq(self, src_data, proxies, src_template):
     resp = self.session.post(
         url, data={'source': 'auto', 'target': 'en', 'sourceText': src_data},
         headers=self.headers, timeout=self.translate_timeout, proxies=proxies)
-    return merge_conflict(
-        src_template,
-        [record["targetText"] for record in json.loads(resp.text)["translate"]["records"] if record.get("sourceText") != "\n"])
+    result_set = (record["targetText"] for record in json.loads(resp.text)["translate"]["records"]
+                  if record.get("sourceText") != "\n")
+    if src_template == "%s":
+        return "".join(result_set)
+    else:
+        return src_template % tuple(result_set)
 
 
 def google(self, src_data, proxies, src_template):
