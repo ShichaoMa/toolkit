@@ -1,7 +1,11 @@
 import re
 import ast
+import json
+import requests
 
 from abc import abstractmethod
+from collections import defaultdict
+
 from ..singleton import SingletonABCMeta
 
 from .. import unsigned_right_shitf, shift_left_for_js, shift_right_for_js
@@ -82,8 +86,19 @@ class TokenAcquirer(metaclass=SingletonABCMeta):
             r = r + a & 4294967295 if "+" == o[t] else r ^ a
         return r
 
+    @classmethod
+    def from_session(cls, host, session):
+        return cls(host, session)
+
 
 class BingAcquirer(TokenAcquirer):
+
+    session_proxies = defaultdict(requests.cookies.RequestsCookieJar)
+
+    def __init__(self, host, session):
+        super(BingAcquirer, self).__init__(host, session)
+        self.key = "0"
+
     def acquire(self, text):
         code = 0
         for i in text:
@@ -92,7 +107,17 @@ class BingAcquirer(TokenAcquirer):
         return code
 
     def update(self):
-        self.session.get("https://cn.bing.com/translator/")
+        self.session.get("https://cn.bing.com/translator/", proxies=self.proxies)
+        self.session_proxies[json.dumps(self.proxies)] = self.session.cookies
+
+    @classmethod
+    def from_session(cls, host, session, proxies=None):
+        bing = cls(host, session)
+        bing.proxies = proxies
+        cookies = cls.session_proxies[json.dumps(proxies)]
+        session.cookies = cookies
+        bing.session = session
+        return bing
 
 
 class BaiduAcquirer(TokenAcquirer):

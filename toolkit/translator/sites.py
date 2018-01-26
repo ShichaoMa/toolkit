@@ -37,7 +37,7 @@ def bing(self, src_data, proxies, src_template):
     :param src_template: 原生数据模板
     :return: 结果
     """
-    with BingAcquirer("https://cn.bing.com/translator/", self.session) as acquirer:
+    with BingAcquirer.from_session("https://cn.bing.com/translator/", self.session, proxies) as acquirer:
         url = "https://cn.bing.com/translator/api/Translate/TranslateArray?from=-&to=zh-CHS"
         data_mapping = dict((d, acquirer.acquire(d)) for d in src_data.split("\n"))
         resp = self.session.post(
@@ -85,12 +85,9 @@ def qq(self, src_data, proxies, src_template):
     resp = self.session.post(
         url, data={'source': 'auto', 'target': 'en', 'sourceText': src_data},
         headers=self.headers, timeout=self.translate_timeout, proxies=proxies)
-    result_set = (record["targetText"] for record in json.loads(resp.text)["translate"]["records"]
-                  if record.get("sourceText") != "\n")
-    if src_template == "%s":
-        return "".join(result_set)
-    else:
-        return src_template % tuple(result_set)
+    return merge_conflict(
+        src_template,
+        [record["targetText"] for record in json.loads(resp.text)["translate"]["records"] if record.get("sourceText") != "\n"])
 
 
 def google(self, src_data, proxies, src_template):
