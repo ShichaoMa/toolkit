@@ -3,9 +3,11 @@ import sys
 import copy
 import logging
 import datetime
+import warnings
 
 from functools import wraps
 from logging import handlers
+from threading import current_thread
 from pythonjsonlogger.jsonlogger import JsonFormatter
 
 from . import _find_caller_name
@@ -55,44 +57,40 @@ class Logger(object, metaclass=Singleton):
     """
     logger的实现
     """
-    def __init__(self, name):
-        self.logger = logging.getLogger(name)
+    format_string = '%(asctime)s [%(name)s:%(threadname)s]%(levelname)s: %(message)s'
 
-    @classmethod
-    def init_logger(cls, settings, name=None):
-        name = name or _find_caller_name()
-        json = settings.get_bool('LOG_JSON', True)
-        level = settings.get('LOG_LEVEL', 'DEBUG')
-        stdout = settings.get_bool('LOG_STDOUT', True)
-        dir = settings.get('LOG_DIR', 'logs')
-        bytes = settings.get('LOG_MAX_BYTES', '10MB')
-        backups = settings.get_int('LOG_BACKUPS', 5)
-        udp_host = settings.get("LOG_UDP_HOST", "127.0.0.1")
-        udp_port = settings.get_int("LOG_UDP_PORT", 5230)
-        file_out = settings.get_bool('LOG_FILE', False)
-        logger = cls(name=name)
-        logger.logger.propagate = False
-        logger.json = json
-        logger.name = name
-        logger.format_string = '%(asctime)s [%(name)s]%(levelname)s: %(message)s'
+    def __init__(self, settings, name=None):
+        self.name = name or _find_caller_name(steps=2)
+        self.json = settings.get_bool('LOG_JSON', True)
+        self.level = settings.get('LOG_LEVEL', 'DEBUG')
+        self.stdout = settings.get_bool('LOG_STDOUT', True)
+        self.dir = settings.get('LOG_DIR', 'logs')
+        self.bytes = settings.get('LOG_MAX_BYTES', '10MB')
+        self.backups = settings.get_int('LOG_BACKUPS', 5)
+        self.udp_host = settings.get("LOG_UDP_HOST", "127.0.0.1")
+        self.udp_port = settings.get_int("LOG_UDP_PORT", 5230)
+        self.log_file = settings.get_bool('LOG_FILE', False)
+        self.logger = logging.getLogger(self.name)
+        self.logger.propagate = False
+        self.set_up()
+
+    def set_up(self):
         root = logging.getLogger()
         # 将的所有使用Logger模块生成的logger设置一样的logger level
         for log in root.manager.loggerDict.keys():
-            root.getChild(log).setLevel(getattr(logging, level, 10))
+            root.getChild(log).setLevel(getattr(logging, self.level, 10))
 
-        if stdout:
-            logger.set_handler(logging.StreamHandler(sys.stdout))
-        elif file_out:
+        if self.stdout:
+            self.set_handler(logging.StreamHandler(sys.stdout))
+        elif self.log_file:
             os.makedirs(dir, exist_ok=True)
             file_handler = handlers.RotatingFileHandler(
-                os.path.join(dir, "%s.log"%name),
+                os.path.join(dir, "%s.log" % self.name),
                 maxBytes=bytes,
-                backupCount=backups)
-            logger.set_handler(file_handler)
+                backupCount=self.backups)
+            self.set_handler(file_handler)
         else:
-            logger.set_handler(UDPLogstashHandler(udp_host, udp_port))
-
-        return logger
+            self.set_handler(UDPLogstashHandler(self.udp_host, self.udp_port))
 
     def set_handler(self, handler):
         handler.setLevel(logging.DEBUG)
@@ -120,4 +118,10 @@ class Logger(object, metaclass=Singleton):
             my_copy['timestamp'] = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         if 'logger' not in my_copy:
             my_copy['logger'] = self.name
+        my_copy["threadname"] = current_thread().getName()
         return my_copy
+
+    @classmethod
+    def init_logger(cls, name, settings):
+        warnings.warn("init_logger is a deprecated alias, use Logger() instead.", DeprecationWarning, 2)
+        return cls(name, settings)

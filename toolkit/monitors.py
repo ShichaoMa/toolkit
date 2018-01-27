@@ -3,6 +3,7 @@ import sys
 import signal
 import random
 import logging
+import warnings
 import traceback
 
 from redis import Redis
@@ -72,7 +73,6 @@ class LoggingMonitor(object):
     name = "logging_monitor"
     wrapper = SettingsWrapper()
     default_settings = "settings"
-    _logger = None
 
     def __init__(self, settings=None, local_settings=None):
         super(LoggingMonitor, self).__init__()
@@ -80,15 +80,11 @@ class LoggingMonitor(object):
             self.settings = settings
         else:
             self.settings = self.wrapper.load(local=local_settings, default=settings or self.default_settings)
+        self.logger = Logger(self.settings)
 
     def set_logger(self, logger=None):
+        warnings.warn("set_logger is a deprecated alias, you needn't to that.", DeprecationWarning, 2)
         self._logger = logger
-
-    @property
-    def logger(self):
-        if not self._logger:
-            self._logger = Logger.init_logger(self.settings, self.name)
-        return self._logger
 
     def log_err(self, func_name, *args):
         self.logger.error("Error in %s: %s. " % (func_name, "".join(traceback.format_exception(*args))))

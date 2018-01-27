@@ -7,6 +7,8 @@
 使用了元类的类的子类也会使用该元类创建
 """
 from abc import ABCMeta
+from threading import RLock
+
 
 __all__ = ["Singleton", "SingletonABCMeta"]
 
@@ -15,6 +17,8 @@ class Singleton(type):
     """
     单例类实现
     """
+    lock = RLock()
+
     def __new__(mcs, *args, **kwargs):
         """
         元类msc通过__new__组建类对象，其中msc指Singleton
@@ -29,8 +33,9 @@ class Singleton(type):
         return cls
 
     def __call__(cls, *args, **kwargs):
-        cls._instance = cls._instance or super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instance
+        with cls.lock:
+            cls._instance = cls._instance or super(Singleton, cls).__call__(*args, **kwargs)
+            return cls._instance
 
 
 class SingletonABCMeta(ABCMeta, Singleton):

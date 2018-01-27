@@ -1,16 +1,20 @@
 import re
 import os
 import sys
+import json
 import random
 import logging
 import requests
 import traceback
 
+from threading import local
 from functools import partial
+from collections import defaultdict
 from abc import ABC, abstractmethod
 
 from . import sites
 from .. import retry_wrapper
+from .token_acquirer import *
 
 __all__ = ["TranslateAdapter"]
 
@@ -22,6 +26,7 @@ class TranslateAdapter(ABC):
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         "Accept-Language": "en-US,en;q=0.5",
     }
+    local = local()
 
     def __init__(self):
         self.proxy = {}
@@ -44,6 +49,7 @@ class TranslateAdapter(ABC):
 
     def __enter__(self):
         self.session = requests.Session()
+
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -114,4 +120,16 @@ class TranslateAdapter(ABC):
         return src
 
     def _translate(self, src, proxies, src_template):
-        return getattr(self, random.choice(self.web_site).strip())(src, proxies, src_template)
+        web_site = random.choice(self.web_site).strip()
+        acq = globals().get("%sAcquirer" % web_site.capitalize())
+        if acq:
+            if not getattr(self.local, "acquirers", None):
+                self.local.acquirers = dict()
+            if not getattr(self.local, "proxies_cookies", None):
+                self.local.proxies_cookies = defaultdict(dict)
+            if web_site not in self.local.acquirers:
+                self.local.acquirers[web_site] = acq(self.session, self.headers, proxies)
+            self.local.acquirers[web_site].enrich(self.local.proxies_cookies.setdefault(json.dumps(proxies), dict()))
+            return getattr(self, web_site)(src, proxies, src_template, self.local.acquirers[web_site])
+        else:
+            return getattr(self, web_site)(src, proxies, src_template)

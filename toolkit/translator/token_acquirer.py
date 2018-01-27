@@ -1,28 +1,40 @@
 import re
 import ast
-import json
-import requests
 
-from abc import abstractmethod
-from collections import defaultdict
-
-from ..singleton import SingletonABCMeta
+from abc import abstractmethod, ABC
 
 from .. import unsigned_right_shitf, shift_left_for_js, shift_right_for_js
 
-__all__ = ["TokenAcquirer"]
+__all__ = ["BaiduAcquirer", "GoogleAcquirer", "BingAcquirer"]
 
 
-class TokenAcquirer(metaclass=SingletonABCMeta):
+class TokenAcquirer(ABC):
+    kwargs = None
 
-    def __init__(self, host, session):
-        self.session = session
-        self.key = None
-        self.host = host if 'http' in host else 'https://' + host
-
+    @property
     @abstractmethod
-    def update(self):
+    def host(self):
         pass
+
+    def __init__(self, session, headers, proxies):
+        self.session = session
+        self.headers = headers
+        self.proxies = proxies
+        self.key = None
+
+    def update(self):
+        self.auth(self.session.get(self.host, proxies=self.proxies, headers=self.headers, timeout=3))
+
+    def auth(self, resp):
+        pass
+
+    def enrich(self, kwargs):
+        self.kwargs = kwargs
+        if kwargs:
+            cookies = kwargs.pop("cookies")
+            if cookies:
+                self.session.cookies = cookies
+            self.__dict__.update(kwargs)
 
     @abstractmethod
     def n(self, r, o):
@@ -39,6 +51,8 @@ class TokenAcquirer(metaclass=SingletonABCMeta):
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type:
             self.update()
+        self.kwargs["cookies"] = self.session.cookies
+        self.kwargs["key"] = self.key
         return exc_type is None
 
     def acquire(self, text):
@@ -86,17 +100,14 @@ class TokenAcquirer(metaclass=SingletonABCMeta):
             r = r + a & 4294967295 if "+" == o[t] else r ^ a
         return r
 
-    @classmethod
-    def from_session(cls, host, session):
-        return cls(host, session)
-
 
 class BingAcquirer(TokenAcquirer):
+    host = "https://cn.bing.com/translator/"
 
-    session_proxies = defaultdict(requests.cookies.RequestsCookieJar)
+    def __init__(self, host, session, headers=None):
+        super(BingAcquirer, self).__init__(host, session, headers)
 
-    def __init__(self, host, session):
-        super(BingAcquirer, self).__init__(host, session)
+    def auth(self, resp):
         self.key = "0"
 
     def acquire(self, text):
@@ -106,28 +117,20 @@ class BingAcquirer(TokenAcquirer):
             code = shift_left_for_js(code, 5) - code + i | 0
         return code
 
-    def update(self):
-        self.session.get("https://cn.bing.com/translator/", proxies=self.proxies)
-        self.session_proxies[json.dumps(self.proxies)] = self.session.cookies
-
-    @classmethod
-    def from_session(cls, host, session, proxies=None):
-        bing = cls(host, session)
-        bing.proxies = proxies
-        cookies = cls.session_proxies[json.dumps(proxies)]
-        session.cookies = cookies
-        bing.session = session
-        return bing
-
 
 class BaiduAcquirer(TokenAcquirer):
-
-    def __init__(self, host, session=None):
-        super(BaiduAcquirer, self).__init__(host, session)
-        self.token = None
+    host = "http://fanyi.baidu.com/"
 
     def update(self):
-        resp = self.session.post(self.host)
+        self.session.get(self.host, proxies=self.proxies, headers=self.headers, timeout=3)
+        # 要连发两次才能用
+        self.auth(self.session.get(self.host, proxies=self.proxies, headers=self.headers, timeout=3))
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.kwargs["token"] = self.token
+        return super(BaiduAcquirer, self).__exit__(exc_type, exc_val, exc_tb)
+
+    def auth(self, resp):
         self.token = re.search(r"token: '(\w+)'", resp.text).group(1)
         self.key = re.search(r"window.gtk = '(.*?)'", resp.text).group(1)
 
@@ -138,11 +141,11 @@ class BaiduAcquirer(TokenAcquirer):
 
 
 class GoogleAcquirer(TokenAcquirer):
+    host = 'https://translate.google.cn'
     RE_TKK = re.compile(r'TKK=eval\(\'\(\(function\(\)\{(.+?)\}\)\(\)\)\'\);', re.DOTALL)
 
-    def update(self):
-        r = self.session.get(self.host)
-        code = str(self.RE_TKK.search(r.text).group(1)).replace('var ', '')
+    def auth(self, resp):
+        code = str(self.RE_TKK.search(resp.text).group(1)).replace('var ', '')
         code = code.encode().decode('unicode-escape')
 
         if code:

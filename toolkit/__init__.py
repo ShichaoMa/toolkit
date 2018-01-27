@@ -16,7 +16,7 @@ from queue import Empty
 from itertools import zip_longest
 from functools import wraps, reduce, partial
 
-__version__ = '1.5.0'
+__version__ = '1.5.1'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
@@ -536,16 +536,12 @@ def get_ip():
         return netcard_info[0][1]
 
 
-def _find_caller_name(is_func=False):
+def _find_caller_name(is_func=False, steps=1):
     frame = logging.currentframe()
-    src_filename = os.path.normcase(call_later.__code__.co_filename)
-    while True:
+    for i in range(steps + 1):
         co = frame.f_code
-        filename = os.path.normcase(co.co_filename)
-        if filename == src_filename:
-            frame = frame.f_back
-            continue
-        break
+        frame = frame.f_back
+
     if is_func:
         return co.co_name
     else:
@@ -634,18 +630,26 @@ class SafeValue(object):
         return getattr(self.node, item, self.node)
 
 
+def overflow(val, btc):
+    """
+    对于超出字节长度的数字转换成负数
+    :param val:
+    :param btc: 字节长度
+    :return:
+    """
+    max_val = 2 ** (8*btc-1) - 1
+    if not -max_val - 1 <= val <= max_val:
+        val = (val + (max_val + 1)) % (2 * (max_val + 1)) - max_val - 1
+    return val
+
+
 def int_overflow(val):
     """
     类似js对于超过int范围的数转换成负数
     :param val:
     :return:
     """
-    maxint = 2147483647
-    if not -maxint-1 <= val <= maxint:
-        val = (val + (maxint + 1)) % (2 * (maxint + 1)) - maxint - 1
-        # import struct
-        #val = struct.unpack("i", struct.pack("l", val)[:4])[0] # 这种方式性能差一点
-    return val
+    return overflow(val, 4)
 
 
 def unsigned_right_shitf(n, i):

@@ -1,3 +1,4 @@
+import time
 import unittest
 from toolkit.translator import Translator
 
@@ -6,36 +7,50 @@ class TranslateTest(unittest.TestCase):
 
     def assertContainEqual(self, first, second, msg=None):
         if not first.count(second):
-            msg = self._formatMessage(msg, "%s is not contain %s"%(first, second))
+            msg = self._formatMessage(msg, "%s is not contain %s" % (first, second))
             self.fail(msg)
 
-    # def test_translate(self):
-    #     with Translator({"WEB_SITE": "baidu"}) as t:
-    #         t.set_logger()
-    #         src = t.translate("my name is tom, what about yours?")
-    #         print(111111111, t.settings.WEB_SITE, src)
-    #         self.assertContainEqual(src, "我")
+    def trans_thread(self, site):
+        with Translator({"WEBSITE": site}) as translator:
+            for i in range(5):
+                result = translator.translate("what %s fuck day it is!" % i)
+                translator.logger.info(result)
+                self.assertContainEqual(result, "天")
+                time.sleep(0.1)
+
+    # def test_baidu(self):
+    #     threads = list()
+    #     for i in range(10):
+    #         th = Thread(target=self.trans_thread, args=("baidu", ))
+    #         th.start()
+    #         threads.append(th)
+    #     for th in threads:
+    #         th.join()
 
     # def test_google(self):
-    #     with Translator({"WEB_SITE": "google"}) as t:
-    #         t.set_logger()
-    #         src = t.translate("my name is tom, what about yours?")
-    #         print(111111111, t.settings.WEB_SITE, src)
-    #         self.assertContainEqual(src, "我")
+    #     threads = list()
+    #     for i in range(10):
+    #         th = Thread(target=self.trans_thread, args=("google", ))
+    #         th.start()
+    #         threads.append(th)
+    #     for th in threads:
+    #         th.join()
+
+    # def test_bing(self):
+    #     threads = list()
+    #     for i in range(10):
+    #         th = Thread(target=self.trans_thread, args=("bing", ))
+    #         th.start()
+    #         threads.append(th)
+    #     for th in threads:
+    #         th.join()
 
     # def test_qq(self):
-    #     with Translator({"WEB_SITE": "qq"}) as t:
-    #         t.set_logger()
-    #         src = t.translate("my name is tom, what about yours?")
-    #         print(111111111, t.settings.WEB_SITE, src)
-    #         self.assertContainEqual(src, "我")
+    #     with Translator({"WEBSITE": "qq"}) as t:
+    #         rs = t.translate("what a fuck day it is!")
+    #         print(rs)
+    #         self.assertContainEqual(rs, "天")
 
-    def test_bing(self):
-        with Translator({"WEB_SITE": "bing"}) as t:
-            t.set_logger()
-            src = t.translate("my name is tom, what about yours?")
-            print(111111111, t.settings.WEB_SITE, src)
-            self.assertContainEqual(src, "我")
 
 if __name__ == "__main__":
     unittest.main()

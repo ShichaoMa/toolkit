@@ -1,5 +1,4 @@
 import json
-from .token_acquirer import GoogleAcquirer, BaiduAcquirer, BingAcquirer
 
 
 def merge_conflict(src_template, returns):
@@ -29,7 +28,7 @@ def youdao(self, src_data, proxies, src_template):
         map(lambda x: x["tgt"], y)), json.loads(resp.text)["translateResult"]))
 
 
-def bing(self, src_data, proxies, src_template):
+def bing(self, src_data, proxies, src_template, acquirer):
     """
     必应翻译的实现
     :param src_data: 原生数据
@@ -37,7 +36,7 @@ def bing(self, src_data, proxies, src_template):
     :param src_template: 原生数据模板
     :return: 结果
     """
-    with BingAcquirer.from_session("https://cn.bing.com/translator/", self.session, proxies) as acquirer:
+    with acquirer:
         url = "https://cn.bing.com/translator/api/Translate/TranslateArray?from=-&to=zh-CHS"
         data_mapping = dict((d, acquirer.acquire(d)) for d in src_data.split("\n"))
         resp = self.session.post(
@@ -50,16 +49,18 @@ def bing(self, src_data, proxies, src_template):
         return src_template % tuple(finish_data)
 
 
-def baidu(self, src_data, proxies, src_template):
+def baidu(self, src_data, proxies, src_template, acquirer):
     """
     百度翻译的实现, 百度翻译最长只能翻译5000个字符
     :param src_data: 原生数据
     :param proxies: 代理
     :param src_template: 原生数据模板
+    :param acquirer: token获取器
     :return: 结果
     """
-    url = "http://fanyi.baidu.com/v2transapi"
-    with BaiduAcquirer("http://fanyi.baidu.com/", self.session) as acquirer:
+    with acquirer:
+        url = "http://fanyi.baidu.com/v2transapi"
+        self.logger.info("Token: %s, sign: %s, proxy: %s" % (acquirer.token, acquirer.acquire(src_data), proxies["http"]))
         resp = self.session.post(url=url, data={
             'from': 'en',
             'to': 'zh',
@@ -70,7 +71,7 @@ def baidu(self, src_data, proxies, src_template):
             "sign": acquirer.acquire(src_data)}, headers=self.headers,
                              timeout=self.translate_timeout, proxies=proxies)
         return src_template % tuple(
-            "".join(map(lambda x: x["src_str"], json.loads(resp.text)["trans_result"]['phonetic'])).split("\n"))
+        "".join(map(lambda x: x["src_str"], json.loads(resp.text)["trans_result"]['phonetic'])).split("\n"))
 
 
 def qq(self, src_data, proxies, src_template):
@@ -90,9 +91,9 @@ def qq(self, src_data, proxies, src_template):
         [record["targetText"] for record in json.loads(resp.text)["translate"]["records"] if record.get("sourceText") != "\n"])
 
 
-def google(self, src_data, proxies, src_template):
+def google(self, src_data, proxies, src_template, acquirer):
     url = 'https://translate.google.cn/translate_a/single'
-    with GoogleAcquirer('translate.google.cn', self.session) as acquirer:
+    with acquirer:
         data = {
             'client': 't',
             'sl': "auto",
