@@ -60,7 +60,6 @@ def baidu(self, src_data, proxies, src_template, acquirer):
     """
     with acquirer:
         url = "http://fanyi.baidu.com/v2transapi"
-        self.logger.info("Token: %s, sign: %s, proxy: %s" % (acquirer.token, acquirer.acquire(src_data), proxies["http"]))
         resp = self.session.post(url=url, data={
             'from': 'en',
             'to': 'zh',
@@ -88,7 +87,8 @@ def qq(self, src_data, proxies, src_template):
         headers=self.headers, timeout=self.translate_timeout, proxies=proxies)
     return merge_conflict(
         src_template,
-        [record["targetText"] for record in json.loads(resp.text)["translate"]["records"] if record.get("sourceText") != "\n"])
+        [record["targetText"]
+         for record in json.loads(resp.text)["translate"]["records"] if record.get("sourceText") != "\n"])
 
 
 def google(self, src_data, proxies, src_template, acquirer):
