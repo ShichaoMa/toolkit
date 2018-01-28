@@ -1,3 +1,4 @@
 python-json-logger
 redis
 kafka-python
+requests
