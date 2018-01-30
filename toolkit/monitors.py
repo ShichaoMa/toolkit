@@ -80,7 +80,7 @@ class LoggingMonitor(object):
             self.settings = settings
         else:
             self.settings = self.wrapper.load(local=local_settings, default=settings or self.default_settings)
-        self.logger = Logger(self.settings)
+        self.logger = Logger(self.settings, self.name)
 
     def set_logger(self, logger=None):
         warnings.warn("set_logger is a deprecated alias, you needn't to that.", DeprecationWarning, 2)
