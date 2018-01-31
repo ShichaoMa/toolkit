@@ -31,7 +31,7 @@ class TokenAcquirer(ABC):
     def enrich(self, kwargs):
         self.kwargs = kwargs
         if kwargs:
-            cookies = kwargs.pop("cookies")
+            cookies = kwargs.pop("cookies", None)
             if cookies:
                 self.session.cookies = cookies
             self.__dict__.update(kwargs)
