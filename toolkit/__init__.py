@@ -16,10 +16,15 @@ from queue import Empty
 from itertools import zip_longest
 from functools import wraps, reduce, partial
 
-__version__ = '1.5.4'
+__version__ = '1.5.5'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
+
+
+def test_prepare(search_path=".."):
+    sys.path.insert(0, os.path.abspath(search_path))
+    del sys.modules["toolkit"]
 
 
 def debugger():

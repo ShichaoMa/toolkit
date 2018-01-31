@@ -11,7 +11,6 @@ from itertools import repeat
 from argparse import ArgumentParser
 from kafka import KafkaConsumer, KafkaProducer
 
-from . import call_later
 from .logger import Logger
 from .frozen import Frozen
 from .daemon import daemonize
@@ -19,6 +18,8 @@ from .consoler import Consoler
 from .singleton import Singleton
 from .managers import ExceptContext
 from .settings import SettingsWrapper
+
+from . import call_later, cache_prop
 
 __all__ = ["ParallelMonitor", "LoggingMonitor", "Service", "ProxyPool", "ItemConsumer", "ItemProducer"]
 
@@ -36,14 +37,15 @@ class ParallelMonitor(object, metaclass=Singleton):
         super(ParallelMonitor, self).__init__()
         self.open()
 
+    @cache_prop
+    def logger(self):
+        logger = logging.getLogger(self.name)
+        logger.setLevel(10)
+        logger.addHandler(logging.StreamHandler(sys.stdout))
+        return logger
+
     def set_logger(self, logger=None):
-        if not logger:
-            self.logger = logging.getLogger(self.name)
-            self.logger.setLevel(10)
-            self.logger.addHandler(logging.StreamHandler(sys.stdout))
-        else:
-            self.logger = logger
-            self.name = logger.name
+        warnings.warn("set_logger is a deprecated alias, you needn't to that.", DeprecationWarning, 2)
 
     def stop(self, *args):
         if self.int_signal_count > 1:

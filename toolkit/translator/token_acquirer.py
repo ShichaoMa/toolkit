@@ -36,10 +36,6 @@ class TokenAcquirer(ABC):
                 self.session.cookies = cookies
             self.__dict__.update(kwargs)
 
-    @abstractmethod
-    def n(self, r, o):
-        pass
-
     def adjust(self, text):
         return text
 
