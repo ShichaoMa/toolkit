@@ -19,7 +19,7 @@ from .singleton import Singleton
 from .managers import ExceptContext
 from .settings import SettingsWrapper
 
-from . import call_later, cache_prop
+from . import call_later, cache_property
 
 __all__ = ["ParallelMonitor", "LoggingMonitor", "Service", "ProxyPool", "ItemConsumer", "ItemProducer"]
 
@@ -37,7 +37,7 @@ class ParallelMonitor(object, metaclass=Singleton):
         super(ParallelMonitor, self).__init__()
         self.open()
 
-    @cache_prop
+    @cache_property
     def logger(self):
         logger = logging.getLogger(self.name)
         logger.setLevel(10)

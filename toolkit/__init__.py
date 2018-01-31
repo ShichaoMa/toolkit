@@ -16,7 +16,7 @@ from queue import Empty
 from itertools import zip_longest
 from functools import wraps, reduce, partial
 
-__version__ = '1.5.5'
+__version__ = '1.5.6'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
@@ -586,16 +586,15 @@ def cache_property(func):
     @property
     @wraps(func)
     def wrapper(*args, **kwargs):
-        prop_name = "_%s"%func.__name__
-        if prop_name not in args[0].__dict__:
-            args[0].__dict__[prop_name] = func(*args, **kwargs)
-        return args[0].__dict__[prop_name]
+        if func.__name__ not in args[0].__dict__:
+            args[0].__dict__[func.__name__] = func(*args, **kwargs)
+        return args[0].__dict__[func.__name__]
     return wrapper
 
 
 class cache_prop(object):
     """
-    描述符版缓存属性
+    描述符版缓存属性，无法被覆盖
     """
     def __init__(self, func):
         self.func = func
