@@ -75,6 +75,7 @@ class LoggingMonitor(object):
     name = "logging_monitor"
     wrapper = SettingsWrapper()
     default_settings = "settings"
+    logger = None
 
     def __init__(self, settings=None, local_settings=None):
         super(LoggingMonitor, self).__init__()

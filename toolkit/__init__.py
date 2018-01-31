@@ -16,7 +16,7 @@ from queue import Empty
 from itertools import zip_longest
 from functools import wraps, reduce, partial
 
-__version__ = '1.5.6'
+__version__ = '1.5.7'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
@@ -619,14 +619,14 @@ def cache_for(interval=10):
         @property
         @wraps(func)
         def inner(*args, **kwargs):
-            prop_name = "_%s" % func.__name__
+            prop_name = func.__name__
             prop_start_name = "%s_cache_start_time" % prop_name
             if time.time() - args[0].__dict__.get(prop_start_name, 0) > interval:
                 args[0].__dict__[prop_name] = func(*args, **kwargs)
                 args[0].__dict__["%s_cache_start_time" % prop_name] = time.time()
             return args[0].__dict__[prop_name]
         return inner
-    return cache_property
+    return outer
 
 
 class SafeValue(object):
