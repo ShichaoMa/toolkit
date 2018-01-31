@@ -22,8 +22,14 @@ __version__ = '1.5.5'
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
 
 
-def test_prepare(search_path=".."):
-    sys.path.insert(0, os.path.abspath(search_path))
+def test_prepare(search_paths=[".."]):
+    """
+    单元测试时，动态添加模块搜索路径。
+    :param search_paths:
+    :return:
+    """
+    for search_path in search_paths:
+        sys.path.insert(0, os.path.abspath(search_path))
     del sys.modules["toolkit"]
 
 
