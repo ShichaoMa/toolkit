@@ -3,7 +3,7 @@ import ast
 
 from abc import abstractmethod, ABC
 
-from .. import unsigned_right_shitf, shift_left_for_js, shift_right_for_js
+from .. import unsigned_right_shift, shift_left_for_js, shift_right_for_js
 
 __all__ = ["BaiduAcquirer", "GoogleAcquirer", "BingAcquirer"]
 
@@ -92,7 +92,7 @@ class TokenAcquirer(ABC):
         for t in range(0, len(o) - 2, 3):
             a = o[t + 2]
             a = ord(a) - 87 if a >= "a" else int(a)
-            a = unsigned_right_shitf(r, a) if "+" == o[t + 1] else r << a
+            a = unsigned_right_shift(r, a) if "+" == o[t + 1] else r << a
             r = r + a & 4294967295 if "+" == o[t] else r ^ a
         return r
 
