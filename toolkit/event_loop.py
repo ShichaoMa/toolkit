@@ -1,17 +1,18 @@
-import collections
-import errno
-import functools
-import heapq
-import itertools
 import os
-import select
 import time
+import errno
+import heapq
+import select
+import functools
+import itertools
+import collections
+
 from collections.abc import Coroutine, Iterable
 
-from .singleton import SingletonABCMeta
+from .tornado.waker import Waker
 from .tornado.future import Future
 from .tornado.timeout import Timeout
-from .tornado.waker import Waker
+from .singleton import SingletonABCMeta
 from .tornado.utils import errno_from_exception
 
 _POLL_TIMEOUT = 3600

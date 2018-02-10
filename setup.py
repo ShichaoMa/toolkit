@@ -5,7 +5,7 @@ except:
     from distutils.core import setup
 
 
-VERSION = '1.5.9'
+VERSION = '1.6.0'
 
 AUTHOR = "cn"
 
@@ -26,7 +26,7 @@ KEYWORDS = "tools function"
 
 LICENSE = "MIT"
 
-PACKAGES = ["toolkit", "toolkit.translator"]
+PACKAGES = ["toolkit", "toolkit.translator", "toolkit.tornado"]
 
 setup(
     name=NAME,

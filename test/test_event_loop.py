@@ -1,6 +1,6 @@
 from toolkit import test_prepare
 test_prepare()
-from toolkit.event_loop import EventLoop, sleep, coroutine, Future
+from toolkit.event_loop import EventLoop, sleep, coroutine
 
 
 @coroutine
