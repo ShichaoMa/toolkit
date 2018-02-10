@@ -9,7 +9,7 @@ class TimerTest(unittest.TestCase):
         with Timer() as timer:
             time.sleep(3)
 
-        self.assertTrue(timer.cost>3)
+        self.assertTrue(timer.cost > 3)
 
 
 if __name__ == "__main__":
