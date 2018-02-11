@@ -55,10 +55,12 @@ import os
 import types
 import importlib
 
+from numbers import Number
+from collections import UserDict
+from collections.abc import Collection, MutableSequence, MutableSet, MutableMapping
+
 from . import duplicate
 from .frozen import Frozen
-from collections import UserDict
-from collections.abc import MutableMapping, MutableSet, MutableSequence
 
 __all__ = ["Settings", "SettingsWrapper"]
 
@@ -112,11 +114,15 @@ class SettingsWrapper(object):
         '__name__',
         '__cached__',
     ]
-    settings = None
+    allow_types = [Collection, Number]
 
     def __init__(self, settings_type=Settings):
         super(SettingsWrapper, self).__init__()
-        self.settings_type = settings_type
+        self.settings = settings_type()
+
+    @classmethod
+    def register_types(cls, types):
+        cls.allow_types.extend(types)
 
     def load(self, local='localsettings', default='settings'):
         """
@@ -125,16 +131,12 @@ class SettingsWrapper(object):
         :param default: 默认配置模块
         :return: 配置信息字典
         """
-        self.settings = self.settings_type()
-        if isinstance(default, MutableMapping):
-            self.merge(self.settings, default)
-        else:
-            self._load_defaults(default)
+        for settings in [default, local]:
+            if isinstance(settings, MutableMapping):
+                self.merge(self.settings, settings)
+            else:
+                self._load(settings)
 
-        if isinstance(local, MutableMapping):
-            self.merge(self.settings, local)
-        else:
-            self._load_custom(local)
         return Frozen(self.settings)
 
     def load_from_string(self, settings_string='', module_name='customsettings'):
@@ -144,53 +146,28 @@ class SettingsWrapper(object):
         :param module_name: 配置信息的环境变量
         :return:
         """
-        mod = None
         try:
             mod = types.ModuleType(module_name)
             exec(settings_string in mod.__dict__)
         except TypeError:
             print("Could not import settings")
+            mod = None
         try:
-            self.settings.update(self._convert_to_dict(mod))
+            self.merge(self.settings, self._convert_to_dict(mod))
         except ImportError:
             print("Settings unable to be loaded")
 
-    def _load_defaults(self, default='settings'):
-        """
-        加载默认配置信息
-        :param default:
-        :return:
-        """
-        if isinstance(default, str) and default[-3:] == '.py':
-            default = default[:-3]
+    def _load(self, setting_module):
         try:
-            if isinstance(default, str):
-                settings = importlib.import_module(default)
+            if isinstance(setting_module, str):
+                if setting_module[-3:] == '.py':
+                    setting_module = setting_module[:-3]
+                settings = importlib.import_module(setting_module)
             else:
-                settings = default
-            self.settings.update(self._convert_to_dict(settings))
+                settings = setting_module
+            self.merge(self.settings, self._convert_to_dict(settings))
         except ImportError:
-            print("No default settings found")
-
-    def _load_custom(self, settings_name='localsettings'):
-        """
-        加载自定义配置信息，覆盖默认配置
-        :param settings_name:
-        :return:
-        """
-        if isinstance(settings_name, str) and settings_name[-3:] == '.py':
-            settings_name = settings_name[:-3]
-
-        new_settings = dict()
-        try:
-            if isinstance(settings_name, str):
-                settings = importlib.import_module(settings_name)
-            else:
-                settings = settings_name
-            new_settings.update(self._convert_to_dict(settings))
-        except ImportError:
-            print("No override settings found")
-        self.merge(self.settings, new_settings)
+            print("Cannot found %s" % setting_module)
 
     def merge(self, settings, new_settings):
         """
@@ -206,7 +183,8 @@ class SettingsWrapper(object):
                 if isinstance(value, MutableMapping):
                     self.merge(value, new_value)
                 elif isinstance(value, MutableSet):
-                    value.update(new_value)
+                    for v in new_value:
+                        value.add(v)
                 elif isinstance(value, MutableSequence):
                     value.extend(new_value)
                     settings[key] = duplicate(value, reverse=True)
@@ -215,19 +193,14 @@ class SettingsWrapper(object):
             else:
                 settings[key] = new_value
 
-    def _convert_to_dict(self, setting):
+    def _convert_to_dict(self, settings):
         """
         将配置文件转化为字典
         :param setting:
         :return:
         """
-        the_dict = {}
-        for key in dir(setting):
-            if key in self.ignore:
-                continue
-            value = getattr(setting, key)
-            if isinstance(value, (bytes, str, MutableSet, MutableSequence, MutableMapping, int, float, bool)):
-                the_dict[key] = value
-        return the_dict
-
-
+        allow_types = tuple(self.allow_types)
+        return dict(
+            (k, getattr(settings, k)) for k in dir(settings)
+            if k not in self.ignore and isinstance(getattr(settings, k), allow_types)
+        )
