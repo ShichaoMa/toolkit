@@ -17,21 +17,21 @@ def quick(arr, start, end):
     while i < j:
         if from_end:
             # 3 从后向前扫描，当中间值大于后值时交换
-            if target <= arr[j]:
-                j -= 1
-            else:
+            if target > arr[j]:
                 arr[i], arr[j] = arr[j], arr[i]
                 i += 1
                 from_end = False
+            else:
+                j -= 1
         else:
             # 3 从前向后扫描，当中间值小于等于前值时交换
             # 第3条必须保存中间值等于目标值时的情况被覆盖到
-            if target > arr[i]:
-                i += 1
-            else:
+            if target <= arr[i]:
                 arr[i], arr[j] = arr[j], arr[i]
                 j -= 1
                 from_end = True
+            else:
+                i += 1
     # 4 将数组从两个指针相遇的地方将数组分成两部分。
     quick(arr, start, i)
     quick(arr, i+1, end)
