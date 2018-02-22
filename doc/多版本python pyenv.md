@@ -1,0 +1,5 @@
+[ubuntu下安装多版本Python](http://www.cnblogs.com/ningvsban/p/4384995.html)
+[comment]: <tags> (python,pyenv)
+[comment]: <description> (python多版本管理)
+[comment]: <title> (多版本python pyenv)
+[comment]: <author> (夏洛之枫)

@@ -1,0 +1,5 @@
+[http工作原理](http://blog.csdn.net/sean_cd/article/details/6966130)
+[comment]: <tags> (https)
+[comment]: <description> (https的加密过程)
+[comment]: <title> (https加密过程)
+[comment]: <author> (夏洛之枫)

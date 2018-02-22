@@ -1,0 +1,5 @@
+参考资料[Scrapy安转遇到问题](https://pypi.python.org/packages/15/fe/e43871be6559fa1b11bcbd73ea9ac826795bfd77afd6e6029c84bf93145b/lxml-3.4.3.win-amd64-py2.7.exe#md5=ae0d977f59b25f7d042217020202d7b3)
+[comment]: <tags> (scrapy)
+[comment]: <description> (scrapy windows安装方法)
+[comment]: <title> (scrapy windows安装)
+[comment]: <author> (夏洛之枫)

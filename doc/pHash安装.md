@@ -1,0 +1,5 @@
+[pHash-0.9.6 patched version](https://github.com/ShichaoMa/pHash-0.9.6)
+[comment]: <tags> (ubuntu,phash)
+[comment]: <description> (phash安装)
+[comment]: <title> (pHash安装)
+[comment]: <author> (夏洛之枫)

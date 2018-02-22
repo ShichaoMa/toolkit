@@ -6,17 +6,17 @@ def sort(arr, left=0, right=None, temp=list()):
         right = len(arr) - 1
     # 2 递归对子序列排序
     if left < right:
-        mod = int((left + right)/2)
-        sort(arr, left, mod, temp)
-        sort(arr, mod + 1, right, temp)
-        merge(arr, left, mod, right, temp)
+        mid = int((left + right)/2)
+        sort(arr, left, mid)
+        sort(arr, mid + 1, right)
+        merge(arr, left, mid, right, temp)
 
 
-def merge(arr, left, mod, right, temp):
+def merge(arr, left, mid, right, temp):
     i = left
-    j = mod + 1
+    j = mid + 1
     # 3 此时两个子序列是排好的，所以从两个子序列的开始进行遍历，将更小元素值的放到临时数组，直到其中一个子序列变空
-    while i <= mod and j <= right:
+    while i <= mid and j <= right:
         if arr[i] < arr[j]:
             temp.append(arr[i])
             i += 1
@@ -24,7 +24,7 @@ def merge(arr, left, mod, right, temp):
             temp.append(arr[j])
             j += 1
     # 4 将不为空的子序列所有值转移到临时数组
-    while i <= mod:
+    while i <= mid:
         temp.append(arr[i])
         i += 1
 

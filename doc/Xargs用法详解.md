@@ -1,0 +1,5 @@
+[Xargs用法详解](http://blog.csdn.net/zhangfn2011/article/details/6776925/)
+[comment]: <tags> (xargs)
+[comment]: <description> (xargs用法详解)
+[comment]: <title> (Xargs用法详解)
+[comment]: <author> (夏洛之枫)
