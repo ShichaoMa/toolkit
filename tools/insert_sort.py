@@ -1,4 +1,4 @@
-import bisect
+
 
 def insert_sort(arr):
     # 将数组从i处分成两部分[0:i]和[i:]，第一部分已经排好序，遍历第二部分，取每个数和第一部分比较
@@ -13,6 +13,22 @@ def insert_sort(arr):
         arr[j+1] = tmp
 
 
+def insert_sort2(arr):
+    # 将数组从i处分成两部分[0:i]和[i:]，第一部分已经排好序
+    for i in range(1, len(arr)):
+        # 依次从后面取出元素
+        ele = arr.pop(-1)
+        # 遍历第一部分的元素，当最后的元素小于当前元素时，插入
+        for j in range(i):
+            if ele < arr[j]:
+                arr.insert(j, ele)
+                break
+        # 没有找到比最后的元素更小的元素，则插到第一部分最后
+        else:
+            arr.insert(j+1, ele)
+    return arr
+
+
 a = [5,3,1,7,3,7,0,4,8]
-insert_sort(a)
+insert_sort2(a)
 print(a)
