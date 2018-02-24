@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 import os
 import time
 import errno
@@ -13,32 +14,37 @@ from .tornado.waker import Waker
 from .tornado.future import Future
 from .tornado.timeout import Timeout
 from .singleton import SingletonABCMeta
+from .generator_adapter import GeneratorAdapter
 from .tornado.utils import errno_from_exception
 
 _POLL_TIMEOUT = 3600
+import warnings
+
+warnings.warn("event_loop is a deprecated alias, pip install coroutine for instead.", DeprecationWarning, 2)
 
 
 def coroutine(func):
 
     def __init__(self, *args, **kwargs):
         super(self.__class__, self).__init__()
-        self.gen = func(*args, **kwargs)
+        self.gen = GeneratorAdapter(func(*args, **kwargs))
 
     def send(self, result):
         try:
             return self.gen.send(result)
         except (GeneratorExit, StopIteration) as e:
-            self.set_result(e.args[0])
+            self.set_result(e.args[0] if e.args else None)
             raise
 
     def throw(self, typ, val=None, tb=None):
-        return self.gen.throw(typ, val=None, tb=None)
+        return self.gen.throw(typ, val, tb)
 
     def __iter__(self):
-        return self.gen
+        return iter(self.gen)
 
     def __await__(self):
-        yield from self
+        # await关键字是和async配套的，这里不使用。
+        pass
 
     cls = type(func.__name__,
                (Future, Coroutine, Iterable),
@@ -261,7 +267,7 @@ def sleep(seconds):
         future.set_result(None)
 
     EventLoop().call_at(time.time() + seconds, callback)
-    yield future
+    return (yield future)
 
 
 def get_buffer(socket):
@@ -271,6 +277,5 @@ def get_buffer(socket):
         future.set_result(fd_obj.recv(1024))
 
     EventLoop().add_handler(socket, callback, EventLoop.READ)
-    buffer = yield future
-    return buffer
+    return (yield future)
 

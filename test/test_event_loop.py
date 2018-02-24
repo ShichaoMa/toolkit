@@ -6,7 +6,7 @@ from toolkit.event_loop import EventLoop, sleep, coroutine
 @coroutine
 def sum(a, b):
     print("Sum start. %s + %s" % (a, b))
-    yield from sleep(1)
+    yield  sleep(1)
     result = yield a + b
     print("Sum stop. %s + %s" % (a, b))
     return result
@@ -15,7 +15,7 @@ def sum(a, b):
 @coroutine
 def multi(a, b):
     print("Multi start. %s x %s" % (a, b))
-    yield from sleep(2)
+    yield sleep(2)
     result = yield a * b
     print("Multi stop. %s x %s" % (a, b))
     return result
@@ -23,15 +23,15 @@ def multi(a, b):
 
 @coroutine
 def aaddbthenmutilc(a, b, c):
-    sum_result = yield from sum(a, b)
-    multi_result = yield from multi(sum_result, c)
+    sum_result = yield sum(a, b)
+    multi_result = yield multi(sum_result, c)
     return multi_result
 
 
 @coroutine
 def aaddcthenmutilb(a, b, c):
-    sum_result = yield from sum(a, c)
-    multi_result = yield from multi(sum_result, b)
+    sum_result = yield  sum(a, c)
+    multi_result = yield  multi(sum_result, b)
     return multi_result
 
 
