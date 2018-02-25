@@ -1,4 +1,5 @@
 import sys
+import time
 
 from socket import socket
 from abc import abstractmethod
@@ -6,7 +7,6 @@ from threading import Thread, local
 from code import InteractiveInterpreter
 
 from .singleton import SingletonABCMeta
-from .managers import ExceptContext
 
 __all__ = ["Consoler"]
 
@@ -159,7 +159,7 @@ class Consoler(metaclass=SingletonABCMeta):
 
     def init_console(self, locals):
         console_thread = Thread(target=self.console, args=(locals, ))
-        console_thread.setDaemon(True)
+        #console_thread.setDaemon(True)
         console_thread.start()
 
     def start_client(self):
@@ -187,6 +187,7 @@ class Consoler(metaclass=SingletonABCMeta):
 
     def console(self, locals):
         server = socket()
+        server.setblocking(0)
         server.bind((self.args.console_host, self.args.console_port))
         server.listen(0)
         ci = CustomInteractiveInterpreter(locals)
@@ -196,13 +197,18 @@ class Consoler(metaclass=SingletonABCMeta):
             try:
                 client, addr = server.accept()
                 while self.alive:
-                    cmd = client.recv(102400)
-                    if cmd == b"exit" or cmd == b"exit()" or not cmd:
-                        break
-                    result = ci.runsource(cmd.decode()).encode()
-                    client.send(result)
-            except Exception as e:
-                print(e)
+                    try:
+                        cmd = client.recv(102400)
+                        if cmd == b"exit" or cmd == b"exit()" or not cmd:
+                            break
+                        result = ci.runsource(cmd.decode()).encode()
+                        client.send(result)
+                    except BlockingIOError as e:
+                        time.sleep(0.1)
+            except BlockingIOError as e:
+                if not self.alive:
+                    break
+                time.sleep(1)
             finally:
                 if client:
                     try:
