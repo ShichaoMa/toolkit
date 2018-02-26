@@ -78,12 +78,12 @@ class LoggingMonitor(object):
     logger = None
 
     def __init__(self, settings=None, local_settings=None):
-        super(LoggingMonitor, self).__init__()
         if isinstance(settings, Frozen):
             self.settings = settings
         else:
             self.settings = self.wrapper.load(local=local_settings, default=settings or self.default_settings)
         self.logger = Logger(self.settings, self.name)
+        super(LoggingMonitor, self).__init__()
 
     def set_logger(self, logger=None):
         warnings.warn("set_logger is a deprecated alias, you needn't to that.", DeprecationWarning, 2)
@@ -105,6 +105,10 @@ class Service(LoggingMonitor, Consoler, ParallelMonitor):
     def __init__(self):
         self.args = self.parse_args()
         super(Service, self).__init__(self.args.settings, self.args.localsettings)
+
+    @property
+    def debug(self):
+        return self.settings.get_bool("DEBUG", False)
 
     def enrich_parser_arguments(self):
         super(Service, self).enrich_parser_arguments()

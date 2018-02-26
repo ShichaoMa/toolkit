@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 import sys
 import time
 
@@ -7,6 +8,7 @@ from threading import Thread, local
 from code import InteractiveInterpreter
 
 from .singleton import SingletonABCMeta
+
 
 __all__ = ["Consoler"]
 
@@ -151,7 +153,7 @@ class Consoler(metaclass=SingletonABCMeta):
     def __init__(self, ls=None):
         if self.args.console:
             self.start_client()
-        else:
+        elif self.debug:
             if not ls:
                 ls = locals()
             self.init_console(ls)
@@ -159,7 +161,6 @@ class Consoler(metaclass=SingletonABCMeta):
 
     def init_console(self, locals):
         console_thread = Thread(target=self.console, args=(locals, ))
-        #console_thread.setDaemon(True)
         console_thread.start()
 
     def start_client(self):
@@ -175,6 +176,8 @@ class Consoler(metaclass=SingletonABCMeta):
                 break
             if not cmd:
                 cmd = "\n"
+            if cmd == "exit" or cmd == "exit()":
+                break
             client.send(cmd.encode())
             result = client.recv(102400)
             if result:
@@ -199,7 +202,7 @@ class Consoler(metaclass=SingletonABCMeta):
                 while self.alive:
                     try:
                         cmd = client.recv(102400)
-                        if cmd == b"exit" or cmd == b"exit()" or not cmd:
+                        if not cmd:
                             break
                         result = ci.runsource(cmd.decode()).encode()
                         client.send(result)
@@ -221,6 +224,11 @@ class Consoler(metaclass=SingletonABCMeta):
     @abstractmethod
     def args(self):
         pass
+
+    @property
+    @abstractmethod
+    def debug(self):
+        return True
 
     def enrich_parser_arguments(self):
         self.parser.add_argument("--console", help="start a console. ", action="store_true")
