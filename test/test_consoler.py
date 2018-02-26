@@ -1,5 +1,6 @@
 import time
-
+from toolkit import test_prepare
+test_prepare()
 from argparse import ArgumentParser
 from toolkit.consoler import Consoler
 

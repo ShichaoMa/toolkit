@@ -37,7 +37,28 @@ def quick(arr, start, end):
     quick(arr, i+1, end)
 
 
+def quick_sort2(arr, left=0, right=None):
+    if right is None:
+        right = len(arr) - 1
+    if left >= right:
+        return
+    i = left
+    j = right
+    key = arr[i]
+    while i < j:
+        while i < j and arr[j] >= key:
+            j -= 1
+        arr[i] = arr[j]
+        while i < j and arr[i] <= key:
+            i += 1
+        arr[j] = arr[i]
+    arr[i] = key
+    quick_sort2(arr, left, i-1)
+    quick_sort2(arr, i+1, right)
+
+
 if __name__ == "__main__":
     arr = [6,3,8,1,4,6,9,2]
-    quick(arr, 0, len(arr)-1)
+    #quick(arr, 0, len(arr)-1)
+    quick_sort2(arr)
     print(arr)
