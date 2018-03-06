@@ -229,7 +229,7 @@ class ItemProducer(Service):
         self.logger.debug("Product future success: %s"%value)
 
     def produce_errback(self, value):
-        self.logger.debug("Product future failed: %s" % value)
+        self.logger.error("Product future failed: %s" % value)
 
     def produce(self, *messages):
         with ExceptContext(Exception, errback=self.log_err):

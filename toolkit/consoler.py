@@ -147,9 +147,6 @@ class Consoler(metaclass=SingletonABCMeta):
     """
     通过交互客户端实时了解程序内部变化
     """
-    alive = True
-    parser = None
-
     def __init__(self, ls=None):
         if self.args.console:
             self.start_client()
@@ -224,6 +221,16 @@ class Consoler(metaclass=SingletonABCMeta):
     @abstractmethod
     def args(self):
         pass
+
+    @property
+    @abstractmethod
+    def parser(self):
+        pass
+
+    @property
+    @abstractmethod
+    def alive(self):
+        return True
 
     @property
     @abstractmethod
