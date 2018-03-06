@@ -25,6 +25,7 @@ class TokenAcquirer(ABC):
     def update(self):
         self.auth(self.session.get(self.host, proxies=self.proxies, headers=self.headers, timeout=3))
 
+    @abstractmethod
     def auth(self, resp):
         pass
 
