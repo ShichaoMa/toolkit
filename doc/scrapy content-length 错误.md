@@ -1,0 +1,3 @@
+之前写的一个spider，在发送post请求时使用了content-length来注明request payload的长度。后来这个spider就一直报错
+看了scrapy的源码发现twisted在发请求时发通过body.len计算content-length并发送，所以如果在header中也指定了content-length
+会发送2次。可能正是因为这个原因，才导致了400错误。但之前没有出现，推测是由于服务器端没有对请求头去重导致的。
