@@ -1,8 +1,8 @@
 ### monitors
 
-![](https://github.com/ShichaoMa/toolkit/blob/master/monitors.jpg)
+![](https://github.com/ShichaoMa/toolkit/blob/master/resources/monitors.jpg)
 ### translator
-![](https://github.com/ShichaoMa/toolkit/blob/master/translator.jpg)
+![](https://github.com/ShichaoMa/toolkit/blob/master/resources/translator.jpg)
 
 参考资料 
 
