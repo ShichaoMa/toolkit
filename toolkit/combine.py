@@ -57,7 +57,7 @@ def combine(part, words=(), keywords=(), after=True, extend=False):
             init(*args, **kwargs)
             parter = part(
                     *words and wds(args[0]),
-                    **keywords and dict(zip(keywords, kwds(args[0])))
+                    **dict(zip(keywords, kwds(args[0])) if keywords else {})
                 )
             setattr(args[0], part.__name__.lower(), parter)
             setattr(parter, source_cls.__name__.lower(), args[0])
