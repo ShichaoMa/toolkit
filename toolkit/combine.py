@@ -44,7 +44,7 @@ def combine(part, words=(), keywords=(), after=True, extend=False):
                             else:
                                 prop2(self, *args[1:], **kwargs)
                                 prop1(*args, **kwargs)
-                        return wrapper()
+                        return wrapper
                     return prop2
                 setattr(source_cls, p, closure())
             else:
