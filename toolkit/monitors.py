@@ -1,6 +1,5 @@
 import os
 import sys
-import types
 import signal
 import random
 import logging
@@ -88,7 +87,7 @@ class LoggingMonitor(object):
         super(LoggingMonitor, self).__init__()
 
     def set_logger(self, logger=None):
-        warnings.warn("set_logger is a deprecated alias, you needn't to that.", DeprecationWarning, 2)
+        warnings.warn("set_logger is a deprecated alias, you needn't do that.", DeprecationWarning, 2)
         self._logger = logger
 
     def log_err(self, func_name, *args):
