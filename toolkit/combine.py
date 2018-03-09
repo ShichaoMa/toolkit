@@ -37,7 +37,7 @@ def combine(part, words=(), keywords=(), after=True, extend=False):
                         if extend:
                             self = args[0]
                         else:
-                            self = getattr(args[0], part.__name__.lower())
+                            self = getattr(args[0], part.__name__.lower(), args[0])
                         if after:
                             prop1(*args, **kwargs)
                             prop2(self, *args[1:], **kwargs)
