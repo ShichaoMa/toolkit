@@ -3,11 +3,8 @@ import sys
 import time
 
 from socket import socket
-from abc import abstractmethod
 from threading import Thread, local
 from code import InteractiveInterpreter
-
-from .singleton import SingletonABCMeta
 
 
 __all__ = ["Consoler"]
@@ -143,28 +140,30 @@ class CustomInteractiveInterpreter(InteractiveInterpreter):
         sys.stdout.write(data)
 
 
-class Consoler(metaclass=SingletonABCMeta):
+class Consoler(object):
     """
     通过交互客户端实时了解程序内部变化
     """
-    def __init__(self, ls=None):
-        if self.args.console:
-            self.start_client()
-        elif self.debug:
-            if not ls:
-                ls = locals()
-            self.init_console(ls)
-        super(Consoler, self).__init__()
+    parser = None
 
-    def init_console(self, locals):
-        console_thread = Thread(target=self.console, args=(locals, ))
+    def __init__(self, instance):
+        self.instance = instance
+        if instance.args.console:
+            self._start_client(instance.args.console_host, instance.args.console_port)
+        elif instance.debug:
+            self._init_console(instance.args.console_host, instance.args.console_port)
+        self.namespace = locals()
+
+    def _init_console(self, console_host, console_port):
+        console_thread = Thread(target=self._console, args=(console_host, console_port))
+        console_thread.setDaemon(True)
         console_thread.start()
 
-    def start_client(self):
+    def _start_client(self, console_host, console_port):
         client = socket()
-        client.connect((self.args.console_host, self.args.console_port))
+        client.connect((console_host, console_port))
         result = b""
-        while self.alive:
+        while self.instance.alive:
             if not result.count(b"...") and result != b">>> ":
                 print(">>> ", end="")
             try:
@@ -182,21 +181,21 @@ class Consoler(metaclass=SingletonABCMeta):
             else:
                 break
         client.close()
-        self.alive = False
+        self.instance.alive = False
         sys.exit(0)
 
-    def console(self, locals):
+    def _console(self, console_host, console_port):
         server = socket()
         server.setblocking(0)
-        server.bind((self.args.console_host, self.args.console_port))
+        server.bind((console_host, console_port))
         server.listen(0)
-        ci = CustomInteractiveInterpreter(locals)
+        ci = CustomInteractiveInterpreter(self.namespace)
         _local._current_ipy = ci
-        while self.alive:
+        while self.instance.alive:
             client = None
             try:
                 client, addr = server.accept()
-                while self.alive:
+                while self.instance.alive:
                     try:
                         cmd = client.recv(102400)
                         if not cmd:
@@ -206,7 +205,7 @@ class Consoler(metaclass=SingletonABCMeta):
                     except BlockingIOError as e:
                         time.sleep(0.1)
             except BlockingIOError as e:
-                if not self.alive:
+                if not self.instance.alive:
                     break
                 time.sleep(1)
             finally:
@@ -216,26 +215,7 @@ class Consoler(metaclass=SingletonABCMeta):
                     except:
                         pass
         server.close()
-
-    @property
-    @abstractmethod
-    def args(self):
-        pass
-
-    @property
-    @abstractmethod
-    def parser(self):
-        pass
-
-    @property
-    @abstractmethod
-    def alive(self):
-        return True
-
-    @property
-    @abstractmethod
-    def debug(self):
-        return True
+        self.instance.alive = False
 
     def enrich_parser_arguments(self):
         self.parser.add_argument("--console", help="start a console. ", action="store_true")

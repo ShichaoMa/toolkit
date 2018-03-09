@@ -1,5 +1,6 @@
 import os
 import sys
+import types
 import signal
 import random
 import logging
@@ -13,11 +14,12 @@ from kafka import KafkaConsumer, KafkaProducer
 
 from .logger import Logger
 from .frozen import Frozen
+from .combine import combine
 from .daemon import daemonize
 from .consoler import Consoler
 from .singleton import Singleton
 from .managers import ExceptContext
-from .settings import SettingsWrapper
+from .settings import SettingsLoader
 
 from . import call_later, cache_property
 
@@ -73,7 +75,7 @@ class LoggingMonitor(object):
     内建Logger和Settings
     """
     name = "logging_monitor"
-    wrapper = SettingsWrapper()
+    loader = SettingsLoader()
     default_settings = "settings"
     logger = None
 
@@ -81,7 +83,7 @@ class LoggingMonitor(object):
         if isinstance(settings, Frozen):
             self.settings = settings
         else:
-            self.settings = self.wrapper.load(local=local_settings, default=settings or self.default_settings)
+            self.settings = self.loader.load(local=local_settings, default=settings or self.default_settings)
         self.logger = Logger(self.settings, self.name)
         super(LoggingMonitor, self).__init__()
 
@@ -94,7 +96,8 @@ class LoggingMonitor(object):
         return True
 
 
-class Service(LoggingMonitor, Consoler, ParallelMonitor):
+@combine(Consoler)
+class Service(LoggingMonitor, ParallelMonitor):
     """
         可执行程序，支持守护进程启动
     """
@@ -106,12 +109,7 @@ class Service(LoggingMonitor, Consoler, ParallelMonitor):
         self.args = self.parse_args()
         super(Service, self).__init__(self.args.settings, self.args.localsettings)
 
-    @property
-    def debug(self):
-        return self.settings.get_bool("DEBUG", False)
-
     def enrich_parser_arguments(self):
-        super(Service, self).enrich_parser_arguments()
         self.parser.add_argument("-s", "--settings", help="Setting module. ")
         self.parser.add_argument("-ls", "--localsettings", help="Local setting module. ", default="localsettings")
 
@@ -119,6 +117,10 @@ class Service(LoggingMonitor, Consoler, ParallelMonitor):
         self.parser = ArgumentParser(conflict_handler="resolve")
         self.enrich_parser_arguments()
         return daemonize(self.parser, daemon_log_path, 2, bool(eval(os.environ.get("DEBUG", "0").lower().capitalize())))
+
+    @property
+    def debug(self):
+        return self.settings.get_bool("DEBUG", False)
 
 
 class ProxyPool(LoggingMonitor):

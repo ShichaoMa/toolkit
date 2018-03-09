@@ -62,7 +62,7 @@ from collections.abc import Collection, MutableSequence, MutableSet, MutableMapp
 from . import duplicate
 from .frozen import Frozen
 
-__all__ = ["Settings", "SettingsWrapper"]
+__all__ = ["Settings", "SettingsLoader"]
 
 
 class Settings(UserDict):
@@ -102,7 +102,7 @@ class Settings(UserDict):
             return d
 
 
-class SettingsWrapper(object):
+class SettingsLoader(object):
     """
     配置文件加载装饰器用来加载和覆盖配置信息
     """
@@ -117,7 +117,6 @@ class SettingsWrapper(object):
     allow_types = [Collection, Number]
 
     def __init__(self, settings_type=Settings):
-        super(SettingsWrapper, self).__init__()
         self.settings = settings_type()
 
     @classmethod
