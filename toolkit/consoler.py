@@ -145,13 +145,13 @@ class Consoler(object):
     通过交互客户端实时了解程序内部变化
     """
     parser = None
+    alive = True
 
-    def __init__(self, instance):
-        self.instance = instance
-        if instance.args.console:
-            self._start_client(instance.args.console_host, instance.args.console_port)
-        elif instance.debug:
-            self._init_console(instance.args.console_host, instance.args.console_port)
+    def __init__(self, host, port, console, debug):
+        if console:
+            self._start_client(host, port)
+        elif debug:
+            self._init_console(host, port)
         self.namespace = locals()
 
     def _init_console(self, console_host, console_port):
@@ -163,7 +163,7 @@ class Consoler(object):
         client = socket()
         client.connect((console_host, console_port))
         result = b""
-        while self.instance.alive:
+        while self.alive:
             if not result.count(b"...") and result != b">>> ":
                 print(">>> ", end="")
             try:
@@ -181,7 +181,7 @@ class Consoler(object):
             else:
                 break
         client.close()
-        self.instance.alive = False
+        self.alive = False
         sys.exit(0)
 
     def _console(self, console_host, console_port):
@@ -191,11 +191,11 @@ class Consoler(object):
         server.listen(0)
         ci = CustomInteractiveInterpreter(self.namespace)
         _local._current_ipy = ci
-        while self.instance.alive:
+        while self.alive:
             client = None
             try:
                 client, addr = server.accept()
-                while self.instance.alive:
+                while self.alive:
                     try:
                         cmd = client.recv(102400)
                         if not cmd:
@@ -205,7 +205,7 @@ class Consoler(object):
                     except BlockingIOError as e:
                         time.sleep(0.1)
             except BlockingIOError as e:
-                if not self.instance.alive:
+                if not self.alive:
                     break
                 time.sleep(1)
             finally:
@@ -215,7 +215,10 @@ class Consoler(object):
                     except:
                         pass
         server.close()
-        self.instance.alive = False
+        self.alive = False
+
+    def stop(self, *args):
+        self.alive = False
 
     def enrich_parser_arguments(self):
         self.parser.add_argument("--console", help="start a console. ", action="store_true")

@@ -95,7 +95,7 @@ class LoggingMonitor(object):
         return True
 
 
-@combine(Consoler)
+@combine(Consoler, ("args.console_host", "args.console_port", "args.console", "debug"))
 class Service(LoggingMonitor, ParallelMonitor):
     """
         可执行程序，支持守护进程启动
