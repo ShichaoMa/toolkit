@@ -28,25 +28,27 @@ def combine(part, words=(), keywords=(), after=True, extend=False):
         c_p = [prop for prop in dir(part) if not prop.startswith("_")]
         for p in c_p:
             if p in s_p:
-                prop1 = getattr(source_cls, p)
-                prop2 = getattr(part, p)
-                if isinstance(prop1, types.FunctionType) and isinstance(prop2, types.FunctionType):
-
-                    @wraps(prop1)
-                    def wrapper(*args, **kwargs):
-                        if extend:
-                            self = args[0]
-                        else:
-                            self = getattr(args[0], part.__name__.lower(), args[0])
-                        if after:
-                            prop1(*args, **kwargs)
-                            prop2(self, *args[1:], **kwargs)
-                        else:
-                            prop2(self, *args[1:], **kwargs)
-                            prop1(*args, **kwargs)
-                    setattr(source_cls, p, wrapper)
-                    continue
-            setattr(source_cls, p, getattr(part, p))
+                def closure():
+                    prop1 = getattr(source_cls, p)
+                    prop2 = getattr(part, p)
+                    if isinstance(prop1, types.FunctionType) and isinstance(prop2, types.FunctionType):
+                        @wraps(prop1)
+                        def wrapper(*args, **kwargs):
+                            if extend:
+                                self = args[0]
+                            else:
+                                self = getattr(args[0], part.__name__.lower(), args[0])
+                            if after:
+                                prop1(*args, **kwargs)
+                                prop2(self, *args[1:], **kwargs)
+                            else:
+                                prop2(self, *args[1:], **kwargs)
+                                prop1(*args, **kwargs)
+                        return wrapper()
+                    return prop2
+                setattr(source_cls, p, closure())
+            else:
+                setattr(source_cls, p, getattr(part, p))
 
         init = source_cls.__init__
 
