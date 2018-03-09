@@ -83,8 +83,10 @@ class LoggingMonitor(object):
             self.settings = settings
         else:
             self.settings = self.loader.load(local=local_settings, default=settings or self.default_settings)
-        self.logger = Logger(self.settings, self.name)
-        super(LoggingMonitor, self).__init__()
+
+    @cache_property
+    def logger(self):
+        return Logger(self.settings, self.name)
 
     def set_logger(self, logger=None):
         warnings.warn("set_logger is a deprecated alias, you needn't do that.", DeprecationWarning, 2)
@@ -96,7 +98,8 @@ class LoggingMonitor(object):
 
 
 @combine(Consoler, ("args.console_host", "args.console_port", "args.console", "debug"))
-class Service(LoggingMonitor, ParallelMonitor):
+@combine(LoggingMonitor, ("args.settings", "args.localsettings"), extend=True)
+class Service(ParallelMonitor):
     """
         可执行程序，支持守护进程启动
     """
@@ -106,7 +109,7 @@ class Service(LoggingMonitor, ParallelMonitor):
 
     def __init__(self):
         self.args = self.parse_args()
-        super(Service, self).__init__(self.args.settings, self.args.localsettings)
+        super(Service, self).__init__()
 
     def enrich_parser_arguments(self):
         self.parser.add_argument("-s", "--settings", help="Setting module. ")

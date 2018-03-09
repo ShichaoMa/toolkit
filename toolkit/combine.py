@@ -1,8 +1,8 @@
 # -*- coding:utf-8 -*-
 import types
 
+from functools import wraps
 from operator import attrgetter
-from functools import wraps, partial
 
 
 def combine(part, words=(), keywords=(), after=True, extend=False):
