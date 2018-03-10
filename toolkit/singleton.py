@@ -9,7 +9,7 @@
 from threading import RLock
 
 
-__all__ = ["Singleton", "SingletonABCMeta"]
+__all__ = ["Singleton"]
 
 
 class Singleton(type):

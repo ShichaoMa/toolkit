@@ -1,5 +1,7 @@
 import time
 import unittest
+from toolkit import test_prepare
+test_prepare()
 from toolkit.translator import Translator
 
 
@@ -45,11 +47,11 @@ class TranslateTest(unittest.TestCase):
     #     for th in threads:
     #         th.join()
 
-    # def test_qq(self):
-    #     with Translator({"WEBSITE": "qq"}) as t:
-    #         rs = t.translate("what a fuck day it is!")
-    #         print(rs)
-    #         self.assertContainEqual(rs, "天")
+    def test_qq(self):
+        with Translator({"WEBSITE": "qq"}) as t:
+            rs = t.translate("what a fuck day it is!")
+            t.logger.info(rs)
+            self.assertContainEqual(rs, "天")
 
 
 if __name__ == "__main__":
