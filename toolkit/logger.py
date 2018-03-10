@@ -1,9 +1,7 @@
 import os
 import sys
-import copy
 import logging
 import datetime
-import warnings
 
 from functools import wraps
 from logging import handlers
@@ -16,39 +14,8 @@ from .singleton import Singleton
 __all__ = ["UDPLogstashHandler", "Logger"]
 
 
-def extras_wrapper(self, item):
-    """
-    logger的extra转用装饰器
-    :param self:
-    :param item:
-    :return:
-    """
-    def logger_func_wrapper(func):
-
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            if len(args) > 2:
-                extras = args[1]
-            else:
-                extras = kwargs.pop("extras", {})
-            extras = self.add_extras(extras, item)
-            return func(args[0], extra=extras)
-
-        return wrapper
-
-    return logger_func_wrapper
-
-
 class UDPLogstashHandler(handlers.DatagramHandler):
-    """Python logging handler for Logstash. Sends events over UDP.
-    :param host: The host of the logstash server.
-    :param port: The port of the logstash server (default 5959).
-    :param message_type: The type of the message (default logstash).
-    :param fqdn; Indicates whether to show fully qualified domain name or not (default False).
-    :param version: version of logstash event schema (default is 0).
-    :param tags: list of tags for a logger (default is None).
-    """
-
+    """Python logging handler for Logstash. Sends events over UDP."""
     def makePickle(self, record):
         return self.formatter.format(record).encode("utf-8")
 
@@ -65,7 +32,7 @@ class Logger(object, metaclass=Singleton):
         self.level = settings.get('LOG_LEVEL', 'DEBUG')
         self.stdout = settings.get_bool('LOG_STDOUT', True)
         self.dir = settings.get('LOG_DIR', 'logs')
-        self.bytes = settings.get('LOG_MAX_BYTES', '10MB')
+        self.bytes = settings.get('LOG_MAX_BYTES', 10*1024*1024)
         self.backups = settings.get_int('LOG_BACKUPS', 5)
         self.udp_host = settings.get("LOG_UDP_HOST", "127.0.0.1")
         self.udp_port = settings.get_int("LOG_UDP_PORT", 5230)
@@ -94,34 +61,29 @@ class Logger(object, metaclass=Singleton):
 
     def set_handler(self, handler):
         handler.setLevel(logging.DEBUG)
-        formatter = self._get_formatter(self.json)
-        handler.setFormatter(formatter)
+        handler.setFormatter(self._get_formatter())
         self.logger.addHandler(handler)
-        self.debug("Logging to %s"%handler.__class__.__name__)
+        self.debug("Logging to %s" % handler.__class__.__name__)
 
     def __getattr__(self, item):
         if item.upper() in logging._nameToLevel:
-            return extras_wrapper(self, item)(getattr(self.logger, item))
+            func = getattr(self.logger, item)
+
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                extra = kwargs.pop("extra", {})
+                extra.setdefault("level", item)
+                extra.setdefault("timestamp", datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ'))
+                extra.setdefault("logger", self.name)
+                extra.setdefault("threadname", current_thread().getName())
+                kwargs["extra"] = extra
+                return func(*args, **kwargs)
+            return wrapper
+
         raise AttributeError
 
-    def _get_formatter(self, json):
-        if json:
+    def _get_formatter(self):
+        if self.json:
             return JsonFormatter()
         else:
             return logging.Formatter(self.format_string)
-
-    def add_extras(self, dict, level):
-        my_copy = copy.deepcopy(dict)
-        if 'level' not in my_copy:
-            my_copy['level'] = level
-        if 'timestamp' not in my_copy:
-            my_copy['timestamp'] = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-        if 'logger' not in my_copy:
-            my_copy['logger'] = self.name
-        my_copy["threadname"] = current_thread().getName()
-        return my_copy
-
-    @classmethod
-    def init_logger(cls, name, settings):
-        warnings.warn("init_logger is a deprecated alias, use Logger() instead.", DeprecationWarning, 2)
-        return cls(name, settings)
