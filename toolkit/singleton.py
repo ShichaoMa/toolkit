@@ -22,18 +22,21 @@ class Singleton(type):
         """
         元类msc通过__new__组建类对象，其中msc指Singleton
         :param args: 可以包含类构建所需要三元素，类名,父类,命名空间, 其中
-        命名空间中__qualname__和函数的__qualname__均含有classname做为前缀，在这里，如果想替换类名，需要把以上全部替换才可以。
+        命名空间中__qualname__和函数的__qualname__均含有classname做为前缀，
+        在这里，如果想替换类名，需要把以上全部替换才可以。
         :param kwargs: 可以自定义传递一些参数
         :return: 返回类对象,通过super(Singleton, mcs).__new__此时已经组装好了类
         """
         class_name, bases, dict = args
         dict["_instance"] = None
-        cls = super(Singleton, mcs).__new__(mcs, class_name, bases, dict, **kwargs)
+        cls = super(Singleton, mcs).__new__(
+            mcs, class_name, bases, dict, **kwargs)
         return cls
 
     def __call__(cls, *args, **kwargs):
         with cls.lock:
-            cls._instance = cls._instance or super(Singleton, cls).__call__(*args, **kwargs)
+            cls._instance = cls._instance or super(Singleton, cls).__call__(
+                *args, **kwargs)
             return cls._instance
 
 

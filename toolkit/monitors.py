@@ -22,7 +22,8 @@ from .settings import SettingsLoader
 
 from . import call_later, cache_property
 
-__all__ = ["ParallelMonitor", "LoggingMonitor", "Service", "ProxyPool", "ItemConsumer", "ItemProducer"]
+__all__ = ["ParallelMonitor", "LoggingMonitor", "Service",
+           "ProxyPool", "ItemConsumer", "ItemProducer"]
 
 
 class ParallelMonitor(object, metaclass=Singleton):
@@ -44,9 +45,6 @@ class ParallelMonitor(object, metaclass=Singleton):
         logger.setLevel(10)
         logger.addHandler(logging.StreamHandler(sys.stdout))
         return logger
-
-    def set_logger(self, logger=None):
-        warnings.warn("set_logger is a deprecated alias, you needn't to that.", DeprecationWarning, 2)
 
     def stop(self, *args):
         if self.int_signal_count > 1:
@@ -82,7 +80,8 @@ class LoggingMonitor(object):
         if isinstance(settings, Frozen):
             self.settings = settings
         else:
-            self.settings = self.loader.load(local=local_settings, default=settings or self.default_settings)
+            self.settings = self.loader.load(
+                local=local_settings, default=settings or self.default_settings)
             super(LoggingMonitor, self).__init__()
 
     @cache_property
@@ -90,11 +89,13 @@ class LoggingMonitor(object):
         return Logger(self.settings, self.name)
 
     def log_err(self, func_name, *args):
-        self.logger.error("Error in %s: %s. " % (func_name, "".join(traceback.format_exception(*args))))
+        self.logger.error("Error in %s: %s. " % (
+            func_name, "".join(traceback.format_exception(*args))))
         return True
 
 
-@combine(Consoler, ("args.console_host", "args.console_port", "args.console", "debug"))
+@combine(Consoler,
+         ("args.console_host", "args.console_port", "args.console", "debug"))
 @combine(LoggingMonitor, ("args.settings", "args.localsettings"))
 class Service(ParallelMonitor):
     """
@@ -110,12 +111,16 @@ class Service(ParallelMonitor):
 
     def enrich_parser_arguments(self):
         self.parser.add_argument("-s", "--settings", help="Setting module. ")
-        self.parser.add_argument("-ls", "--localsettings", help="Local setting module. ", default="localsettings")
+        self.parser.add_argument(
+            "-ls", "--localsettings", help="Local setting module. ",
+            default="localsettings")
 
     def parse_args(self, daemon_log_path='/dev/null'):
         self.parser = ArgumentParser(conflict_handler="resolve")
         self.enrich_parser_arguments()
-        return daemonize(self.parser, daemon_log_path, 2, bool(eval(os.environ.get("DEBUG", "0").lower().capitalize())))
+        return daemonize(
+            self.parser, daemon_log_path, 2,
+            bool(eval(os.environ.get("DEBUG", "0").lower().capitalize())))
 
     @property
     def debug(self):
@@ -134,7 +139,9 @@ class ProxyPool(LoggingMonitor):
         """
         super(ProxyPool, self).__init__(local_settings=settings)
         self.protocols = self.settings.get("PROTOCOLS", "http,https").split(",")
-        self.redis_conn = Redis(self.settings.get("REDIS_HOST", "0.0.0.0"), self.settings.get_int("REDIS_PORT", 6379))
+        self.redis_conn = Redis(
+            self.settings.get("REDIS_HOST", "0.0.0.0"),
+            self.settings.get_int("REDIS_PORT", 6379))
         self.proxy_sets = self.settings.get("PROXY_SETS", "proxy_set").split(",")
         self.account_password = self.settings.get("PROXY_ACCOUNT_PASSWORD", "")
         self.proxy = {}
@@ -146,7 +153,9 @@ class ProxyPool(LoggingMonitor):
         """
         proxy = self.redis_conn.srandmember(random.choice(self.proxy_sets))
         if proxy:
-            proxy_str = "http://%s%s" % (self.account_password+"@"if self.account_password else "", proxy.decode())
+            proxy_str = "http://%s%s" % (
+                self.account_password+"@" if self.account_password else "",
+                proxy.decode())
             self.proxy = dict(zip(self.protocols, repeat(proxy_str)))
         return self.proxy
 
@@ -164,7 +173,8 @@ class ItemConsumer(Service):
         with ExceptContext(Exception, errback=lambda *args: self.stop()):
             self.consumer = KafkaConsumer(self.topic_in,
                                           group_id=self.consumer_id,
-                                          bootstrap_servers=self.settings.KAFKA_HOSTS.split(","),
+                                          bootstrap_servers=
+                                          self.settings.KAFKA_HOSTS.split(","),
                                           enable_auto_commit=False,
                                           consumer_timeout_ms=1000)
 
@@ -177,19 +187,24 @@ class ItemConsumer(Service):
     @call_later("commit", interval=10, immediately=False)
     def consume(self, callback=lambda value: value, errback=lambda message: None):
         """
-        两种模式，当不提供callback, errback的时候，调用consume直接获得message.value，异步处理信息
-        当提供了自定义callback,则处理信息变为同步，可以选择在callback中对message.value进行处理，返回假则处理失败，
+        两种模式，当不提供callback, errback的时候，
+        调用consume直接获得message.value，异步处理信息
+        当提供了自定义callback,则处理信息变为同步，
+        可以选择在callback中对message.value进行处理，返回假则处理失败，
         处理失败后会继续调用errback，可以做回滚offset等操作。
         :param callback:
         :param errback:
         :return:
         """
         with ExceptContext(errback=self.log_err):
-            with ExceptContext((StopIteration, OSError), errback=lambda *args: True):
+            with ExceptContext(
+                    (StopIteration, OSError), errback=lambda *args: True):
                 message = self.consumer.__next__()
                 while message:
                     value = message.value
-                    self.logger.debug('Consume message from %s, message is %s' % (self.topic_in, value))
+                    self.logger.debug(
+                        'Consume message from %s, message is %s' % (
+                            self.topic_in, value))
                     if isinstance(value, bytes):
                         value = value.decode("utf-8")
                     value = callback(value)
@@ -224,7 +239,9 @@ class ItemProducer(Service):
         super(ItemProducer, self).__init__()
         self.topic_out = self.args.topic_out
         with ExceptContext(Exception, errback=lambda *args: self.stop()):
-            self.producer = KafkaProducer(bootstrap_servers=self.settings.KAFKA_HOSTS.split(","), retries=3)
+            self.producer = KafkaProducer(
+                bootstrap_servers=self.settings.KAFKA_HOSTS.split(","),
+                retries=3)
 
     def produce_callback(self, value):
         self.logger.debug("Product future success: %s"%value)

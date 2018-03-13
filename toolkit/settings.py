@@ -201,5 +201,5 @@ class SettingsLoader(object):
         allow_types = tuple(self.allow_types)
         return dict(
             (k, getattr(settings, k)) for k in dir(settings)
-            if k not in self.ignore and isinstance(getattr(settings, k), allow_types)
-        )
+            if k not in self.ignore and isinstance(
+                getattr(settings, k), allow_types))

@@ -16,8 +16,8 @@ def combine(part, words=(), keywords=(), after=True, extend=False):
       extend参数确定是否是继承关系，这决定了在调用part方法时使用part对象还是被组合的对象
       对于__init__方法，Service先调用自己的__init__然后再调用Consoler的__init__方法,
       调用Consoler时传入的参数为words, keywords指定，必须为Service实例属性，如:
-      ("args.console_host", "args.console_port"), keywords 与args参数一样，不过在传入__init__时
-      使用关键字参数的形式。
+      ("args.console_host", "args.console_port"), keywords 与args参数一样，
+      不过在传入__init__时使用关键字参数的形式。
       属性优先级：Service实例属性，Console类属性，Service类属性，Console实例属性。
       """
     def outer(source_cls):
@@ -38,14 +38,16 @@ def combine(part, words=(), keywords=(), after=True, extend=False):
                 def closure():
                     prop1 = getattr(source_cls, p)
                     prop2 = getattr(part, p)
-                    if isinstance(prop1, types.FunctionType) and isinstance(prop2, types.FunctionType):
+                    if isinstance(prop1, types.FunctionType) \
+                            and isinstance(prop2, types.FunctionType):
 
                         @wraps(prop1)
                         def wrapper(*args, **kwargs):
                             if extend:
                                 self = args[0]
                             else:
-                                self = getattr(args[0], part.__name__.lower(), args[0])
+                                self = getattr(
+                                    args[0], part.__name__.lower(), args[0])
                             if after:
                                 result = prop1(*args, **kwargs)
                                 prop2(self, *args[1:], **kwargs)
@@ -87,7 +89,9 @@ def combine(part, words=(), keywords=(), after=True, extend=False):
 
         def closure():
             __getattr = getattr(source_cls, "__getattr__",
-                                gen_default_method("__getattr__", locals(), "raise AttributeError"))
+                                gen_default_method(
+                                    "__getattr__", locals(),
+                                    "raise AttributeError"))
             part_name = part.__name__.lower()
 
             @wraps(__getattr)
@@ -96,9 +100,12 @@ def combine(part, words=(), keywords=(), after=True, extend=False):
                     result = __getattr(*args, **kwargs)
                     return result
                 except AttributeError:
-                    if args[1] in [c.__name__.lower() for c in source_cls.combines]:
+                    if args[1] in \
+                            [c.__name__.lower() for c in source_cls.combines]:
                         raise
-                    return getattr(getattr(args[0], part_name, args[0]), *args[1:], **kwargs)
+                    return getattr(
+                        getattr(
+                            args[0], part_name, args[0]), *args[1:], **kwargs)
             return _getattr
 
         setattr(source_cls, "__getattr__", closure())

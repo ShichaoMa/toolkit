@@ -51,7 +51,8 @@ def arg_to_iter(arg):
     """
     if arg is None:
         return []
-    elif not isinstance(arg, _ITERABLE_SINGLE_VALUES) and hasattr(arg, '__iter__'):
+    elif not isinstance(arg, _ITERABLE_SINGLE_VALUES) \
+            and hasattr(arg, '__iter__'):
         return arg
     else:
         return [arg]
@@ -63,7 +64,8 @@ class Compose(object):
     如果is_pipe=True，那么将第一个函数的结果做为第二个函数的参数
     否则，返回所有函数结果集列表将传aggregation中进行聚合
     """
-    def __init__(self, *functions, is_pipe=False, aggregation=partial(reduce, lambda x, y: x and y)):
+    def __init__(self, *functions, is_pipe=False,
+                 aggregation=partial(reduce, lambda x, y: x and y)):
         self.functions = functions
         self.is_pipe = is_pipe
         self.aggregation = aggregation
@@ -75,7 +77,8 @@ class Compose(object):
                 result_set.append(func(*args, **kwargs))
             else:
                 result_set[0] = func(result_set[0])
-        return self.aggregation(result_set or [0, 0]) if len(result_set) !=1 else result_set[0]
+        return self.aggregation(
+            result_set or [0, 0]) if len(result_set) !=1 else result_set[0]
 
 
 def duplicate(iterable, keep=lambda x: x, key=lambda x: x, reverse=False):
@@ -193,7 +196,8 @@ def chain_all(iter):
 
 def replace_quote(json_str):
     """
-    将要被json.loads的字符串的单引号转换成双引号，如果该单引号是元素主体，而不是用来修饰字符串的。则不对其进行操作。
+    将要被json.loads的字符串的单引号转换成双引号，
+    如果该单引号是元素主体，而不是用来修饰字符串的。则不对其进行操作。
     :param json_str:
     :return:
     """
@@ -239,7 +243,8 @@ def format_html_string(html):
              (r"<([a-z][a-z0-9]*)\ [^>]*>", '<\g<1>>'),
              (r'<\s*script[^>]*>[^<]*<\s*/\s*script\s*>', ''),
              (r"</?a.*?>", '')]
-    return reduce(lambda string, replacement: re.sub(replacement[0], replacement[1], string), trims, html)
+    return reduce(lambda string, replacement:
+                  re.sub(replacement[0], replacement[1], string), trims, html)
 
 
 def urldecode(query):
@@ -248,7 +253,8 @@ def urldecode(query):
     :param query:
     :return:
     """
-    return dict(x.split("=") for x in query.strip().split("&")) if query.strip() else dict()
+    return dict(x.split("=")
+                for x in query.strip().split("&")) if query.strip() else dict()
 
 
 def re_search(regex, text, dotall=True, default=""):
@@ -265,7 +271,8 @@ def re_search(regex, text, dotall=True, default=""):
     if not isinstance(regex, list):
         regex = [regex]
     for rex in regex:
-        rex = (re.compile(rex, re.DOTALL) if dotall else re.compile(rex)) if isinstance(rex, str) else rex
+        rex = (re.compile(rex, re.DOTALL)
+               if dotall else re.compile(rex)) if isinstance(rex, str) else rex
         match_obj = rex.search(text)
         if match_obj is not None:
             t = match_obj.group(1).replace('\n', '')
@@ -285,7 +292,8 @@ class P22P3Encoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-def retry_wrapper(retry_times, exception=Exception, error_handler=None, interval=0.1):
+def retry_wrapper(
+        retry_times, exception=Exception, error_handler=None, interval=0.1):
     """
     函数重试装饰器
     :param retry_times: 重试次数
@@ -304,7 +312,8 @@ def retry_wrapper(retry_times, exception=Exception, error_handler=None, interval
                 except exception as e:
                     count += 1
                     if error_handler:
-                        result = error_handler(func.__name__, count, e, *args, **kwargs)
+                        result = error_handler(
+                            func.__name__, count, e, *args, **kwargs)
                         if result:
                             count -= 1
                     if count >= retry_times:
@@ -387,7 +396,8 @@ def async_produce_wrapper(producer, logger, batch_size=10):
     """
     pykafka实现异步生产时，使用的装饰器
     `
-    self.producer.produce = async_produce_wrapper(self.producer, self.logger)(self.producer.produce)
+    self.producer.produce =
+    async_produce_wrapper(self.producer, self.logger)(self.producer.produce)
     `
     :param producer:
     :param logger:
@@ -452,17 +462,6 @@ def free_port():
     return port
 
 
-def zip(*args, default=""):
-    """
-     zip按最长的迭代对象返回，其余填充default
-    :param args: ["a", "b", "c"], [1, 2]
-    :param default: ""
-    :return: [("a", 1), ("b", 2), ("c", "")]
-    """
-    warnings.warn("zip is a deprecated alias, use itertools.zip_longest instead.", DeprecationWarning, 2)
-    return zip_longest(*args, fillvalue=default)
-
-
 def thread_safe(lock):
     """
     对指定函数进行线程安全包装，需要提供锁
@@ -476,12 +475,6 @@ def thread_safe(lock):
                 return func(*args, **kwargs)
         return wrapper
     return decorate
-
-
-def thread_safe_for_method_in_class(func):
-    warnings.warn("thread_safe_for_method_in_class is a deprecated alias, use thread_safe_for_method instead.",
-                  DeprecationWarning, 2)
-    return thread_safe_for_method(func)
 
 
 def thread_safe_for_method(func):
@@ -500,8 +493,10 @@ def thread_safe_for_method(func):
 def call_later(callback, call_args=tuple(), immediately=True, interval=1):
     """
     应用场景：
-    被装饰的方法需要大量调用，随后需要调用保存方法，但是因为被装饰的方法访问量很高，而保存方法开销很大
-    所以设计在装饰方法持续调用一定间隔后，再调用保存方法。规定间隔内，无论调用多少次被装饰方法，保存方法只会
+    被装饰的方法需要大量调用，随后需要调用保存方法，
+    但是因为被装饰的方法访问量很高，而保存方法开销很大
+    所以设计在装饰方法持续调用一定间隔后，再调用保存方法。
+    规定间隔内，无论调用多少次被装饰方法，保存方法只会
     调用一次，除非immediately=True
     :param callback: 随后需要调用的方法名
     :param call_args: 随后需要调用的方法所需要的参数
@@ -535,7 +530,8 @@ def get_ip():
     try:
         import psutil
     except ImportError:
-        warnings.warn("get_ip function depends on psutil, try: pip install psutil. ")
+        warnings.warn(
+            "get_ip function depends on psutil, try: pip install psutil. ")
         raise
     netcard_info = []
     info = psutil.net_if_addrs()
@@ -604,7 +600,8 @@ class cache_prop(object):
         if self.func.__name__ in instance.__dict__:
             return instance.__dict__[self.func.__name__]
         else:
-            return instance.__dict__.setdefault(self.func.__name__, self.func(instance))
+            return instance.__dict__.setdefault(
+                self.func.__name__, self.func(instance))
 
     def __set__(self, instance, value):
         raise AttributeError("{} is readonly.".format(self.func.__name__))
@@ -632,7 +629,8 @@ def cache_for(timeout=10):
 
 def free_namedtuple(func):
     """
-    根据一个类及其参数创建一个类namedtuple class，但不同之处在于创建实例成功后可以自由赋值，初时化时指定的值决定其Hash和eq结果
+    根据一个类及其参数创建一个类namedtuple class，
+    但不同之处在于创建实例成功后可以自由赋值，初时化时指定的值决定其Hash和eq结果
     :param func:
     :return:
     """
@@ -655,18 +653,22 @@ class {}(object):
     class_name = func.__name__.capitalize()
     init_arg = ", ".join(args)
     init_body = "".join(
-        "self.{%s} = {%s}\n        " % (index, index) for index in range(len(args))).format(*args)
+        "self.{%s} = {%s}\n        " % (
+            index, index) for index in range(len(args))).format(*args)
     hash_body = " + ".join("hash(self.{})".format(arg) for arg in args)
     eq_body = " and ".join("self.{0} == other.{0}".format(arg) for arg in args)
     iter_body = ", self.".join(args)
     namespace = dict(__name__='entries_%s' % class_name)
-    exec(cls_tmpl.format(class_name, init_arg, init_body, hash_body, eq_body, iter_body), namespace)
+    exec(cls_tmpl.format(
+        class_name, init_arg, init_body, hash_body, eq_body, iter_body),
+        namespace)
     return namespace[class_name]
 
 
 def cache_method(timeout=10):
     """
-    缓存一个方法的调用结果，持续一定时长，根据不同的调用参数来缓存不同的结果，调用参数必须是可hash的，
+    缓存一个方法的调用结果，持续一定时长，
+    根据不同的调用参数来缓存不同的结果，调用参数必须是可hash的，
     该方法调用正常时，希望返回真值(形式上为真)，若返回值为假，缓存效果会失效。
     :param timeout: 缓存时长 :s
     :return:

@@ -2,7 +2,8 @@ import json
 
 
 def merge_conflict(src_template, returns):
-    return src_template % tuple(returns[:src_template.count("%s")]) + "。".join(returns[src_template.count("%s"):])
+    return src_template % tuple(returns[:src_template.count("%s")]) + \
+           "。".join(returns[src_template.count("%s"):])
 
 
 def youdao(self, src_data, proxies, src_template):
@@ -37,15 +38,20 @@ def bing(self, src_data, proxies, src_template, acquirer):
     :return: 结果
     """
     with acquirer:
-        url = "https://cn.bing.com/translator/api/Translate/TranslateArray?from=-&to=zh-CHS"
-        data_mapping = dict((d, acquirer.acquire(d)) for d in src_data.split("\n"))
+        url = "https://cn.bing.com/translator/api/Translate/TranslateArray?" \
+              "from=-&to=zh-CHS"
+        data_mapping = dict(
+            (d, acquirer.acquire(d)) for d in src_data.split("\n"))
         resp = self.session.post(
             url=url,
-            json=[{"id": acquirer.acquire(d), "text": d} for d in src_data.split("\n")],
+            json=[{"id": acquirer.acquire(d), "text": d}
+                  for d in src_data.split("\n")],
             headers=self.headers,
             timeout=self.translate_timeout, proxies=proxies)
-        trans_rs = dict((item["id"], item["text"])for item in json.loads(resp.text)["items"])
-        finish_data = [trans_rs[str(data_mapping.get(d))] for d in src_data.split("\n")]
+        trans_rs = dict((item["id"], item["text"])
+                        for item in json.loads(resp.text)["items"])
+        finish_data = [trans_rs[str(data_mapping.get(d))]
+                       for d in src_data.split("\n")]
         return src_template % tuple(finish_data)
 
 
@@ -69,8 +75,9 @@ def baidu(self, src_data, proxies, src_template, acquirer):
             'token': acquirer.token,
             "sign": acquirer.acquire(src_data)}, headers=self.headers,
                              timeout=self.translate_timeout, proxies=proxies)
-        return src_template % tuple(
-        "".join(map(lambda x: x["src_str"], json.loads(resp.text)["trans_result"]['phonetic'])).split("\n"))
+        return src_template % tuple("".join(
+            map(lambda x: x["src_str"],
+                json.loads(resp.text)["trans_result"]['phonetic'])).split("\n"))
 
 
 def qq(self, src_data, proxies, src_template):
@@ -87,8 +94,9 @@ def qq(self, src_data, proxies, src_template):
         headers=self.headers, timeout=self.translate_timeout, proxies=proxies)
     return merge_conflict(
         src_template,
-        [record["targetText"]
-         for record in json.loads(resp.text)["translate"]["records"] if record.get("sourceText") != "\n"])
+        [record["targetText"] for record in json.loads(
+            resp.text)["translate"]["records"]
+         if record.get("sourceText") != "\n"])
 
 
 def google(self, src_data, proxies, src_template, acquirer):
@@ -108,6 +116,9 @@ def google(self, src_data, proxies, src_template, acquirer):
             'tk': acquirer.acquire(src_data),
             'q': src_data,
         }
-        resp = self.session.get(url, params=data, headers=self.headers,
-                                timeout=self.translate_timeout, proxies=proxies)
-        return merge_conflict(src_template, [line[0] for line in json.loads(resp.text)[0] if line[0]])
+        resp = self.session.get(
+            url, params=data, headers=self.headers,
+            timeout=self.translate_timeout, proxies=proxies)
+        return merge_conflict(
+            src_template,
+            [line[0] for line in json.loads(resp.text)[0] if line[0]])

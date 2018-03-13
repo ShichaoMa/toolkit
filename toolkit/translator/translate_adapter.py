@@ -21,9 +21,11 @@ __all__ = ["TranslateAdapter"]
 
 class TranslateAdapter(ABC):
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_2) AppleWebKit/537.36 (KHTML, like Gecko)'
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_2) '
+                      'AppleWebKit/537.36 (KHTML, like Gecko)'
                       ' Chrome/41.0.2272.76 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept': 'text/html,application/xhtml+xml,application'
+                  '/xml;q=0.9,*/*;q=0.8',
         "Accept-Language": "en-US,en;q=0.5",
     }
     local = local()
@@ -90,7 +92,8 @@ class TranslateAdapter(ABC):
         :param kwargs: 重试参数的参数
         :return: 当返回True时，该异常不会计入重试次数
         """
-        self.logger.debug("Error in %s for retry %s times. Error: %s" % (func_name, retry_time, e))
+        self.logger.debug("Error in %s for retry %s times. Error: %s" % (
+            func_name, retry_time, e))
         proxies = self.proxy_choice()
         if proxies:
             args[1].update(proxies)
@@ -109,13 +112,21 @@ class TranslateAdapter(ABC):
             if src_data.strip():
                 # 对源中的%号进行转义
                 src_escape = src.replace("%", "%%")
-                # 将源中被抽离进行翻译的部分替换成`%s`， 如果被抽离部分没有实质内容（为空），则省略
-                src_template = re.sub(pattern, lambda x: "%s" if x.group(1).strip() else "", src_escape)
-                return retry_wrapper(self.retry_times, error_handler=self.trans_error_handler)(
-                    self._translate)(src_data, self.proxy or self.proxy_choice() or self.proxy, src_template)
+                # 将源中被抽离进行翻译的部分替换成`%s`，
+                #  如果被抽离部分没有实质内容（为空），则省略
+                src_template = re.sub(
+                    pattern,
+                    lambda x: "%s" if x.group(1).strip() else "", src_escape)
+                return retry_wrapper(
+                    self.retry_times,
+                    error_handler=self.trans_error_handler)(
+                    self._translate)(
+                    src_data, self.proxy or self.proxy_choice()
+                              or self.proxy, src_template)
         except Exception:
             self.logger.error(
-                "Error in translate, finally, we could not get the translate result. src: %s, Error:  %s" % (
+                "Error in translate, finally, we could not get "
+                "the translate result. src: %s, Error:  %s" % (
                     src, traceback.format_exc()))
         return src
 
@@ -128,8 +139,12 @@ class TranslateAdapter(ABC):
             if not getattr(self.local, "proxies_cookies", None):
                 self.local.proxies_cookies = defaultdict(dict)
             if web_site not in self.local.acquirers:
-                self.local.acquirers[web_site] = acq(self.session, self.headers, proxies)
-            self.local.acquirers[web_site].enrich(self.local.proxies_cookies.setdefault(json.dumps(proxies), dict()))
-            return getattr(self, web_site)(src, proxies, src_template, self.local.acquirers[web_site])
+                self.local.acquirers[web_site] = acq(
+                    self.session, self.headers, proxies)
+            self.local.acquirers[web_site].enrich(
+                self.local.proxies_cookies.setdefault(
+                    json.dumps(proxies), dict()))
+            return getattr(self, web_site)(
+                src, proxies, src_template, self.local.acquirers[web_site])
         else:
             return getattr(self, web_site)(src, proxies, src_template)

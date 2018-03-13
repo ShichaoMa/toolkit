@@ -30,7 +30,8 @@ def daemon(stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
         sys.exit(1)
 
     # 从母体环境脱离
-    # chdir确认进程不保持任何目录于使用状态，否则不能umount一个文件系统。也可以改变到对于守护程序运行重要的文件所在目录
+    # chdir确认进程不保持任何目录于使用状态，否则不能umount一个文件系统。
+    # 也可以改变到对于守护程序运行重要的文件所在目录
     os.chdir("/")
     # 调用umask(0)以便拥有对于写的任何东西的完全控制，因为有时不知道继承了什么样的umask。
     os.umask(0)
@@ -63,11 +64,16 @@ def daemon(stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
 def _t_raw_input(alive_pid):
     """重复启动时提示是否重启，5秒钟后超时返回n"""
     raw_input = globals().get("raw_input") or input
-    return raw_input("The process with pid %s is running, restart it? y/n: " % alive_pid)
+    return raw_input(
+        "The process with pid %s is running, restart it? y/n: " % alive_pid)
 
 
-def common_stop_start_control(parser, monitor_log_path, wait=2, allow_multi=False):
-    warnings.warn("common_stop_start_control is a deprecated alias, use daemonize instead.", DeprecationWarning, 2)
+def common_stop_start_control(
+        parser, monitor_log_path, wait=2, allow_multi=False):
+    warnings.warn(
+        "common_stop_start_control is a deprecated alias,"
+        " use daemonize instead.",
+        DeprecationWarning, 2)
     return daemonize(parser, monitor_log_path, wait, allow_multi)
 
 
@@ -75,13 +81,15 @@ def daemonize(parser, monitor_log_path, wait=2, allow_multi=False):
     """
     开启关闭及守护进程方式启动的公共实现
     :param parser: 一个argparse命令行参数解析对象，其它参数请调用些函数之前声明
-    :param monitor_log_path: 如果通过--daemon 守护进程的方式启动，需要提供守护进程的stdout, stderr的文件路径
+    :param monitor_log_path: 如果通过--daemon 守护进程的方式启动，
+    需要提供守护进程的stdout, stderr的文件路径
     :param wait: 轮循发起关闭信号的间隔时间
     :param allow_multi: 是否允许开启多个进程
     :return: argparse的解析结果对象
     """
     parser.add_argument("-d", "--daemon", action="store_true", default=False)
-    parser.add_argument("method", nargs="?", choices=["stop", "start", "restart", "status"])
+    parser.add_argument(
+        "method", nargs="?", choices=["stop", "start", "restart", "status"])
     args = parser.parse_args()
     pid = os.getpid()
     filter_process_name = "%s .*%s"%(sys.argv[0], "start")
@@ -91,7 +99,8 @@ def daemonize(parser, monitor_log_path, wait=2, allow_multi=False):
     if args.method == "status":
         alive_pid = _check_status(filter_process_name, [pid])
         prompt = ["PROCESS", "STATUS", "PID", "TIME"]
-        status = [sys.argv[0].rstrip(".py"), "RUNNING" if alive_pid else "STOPPED",
+        status = [sys.argv[0].rstrip(".py"),
+                  "RUNNING" if alive_pid else "STOPPED",
                   str(alive_pid), time.strftime("%Y-%m-%d %H:%M:%S")]
         for line in _format_line([prompt, status]):
             [print(i, end="") for i in line]
@@ -171,6 +180,8 @@ def _check_status(name, ignore_pid):
         ppid = int(ppid)
         if not pid or ignore.search(process):
             continue
-        main_pid, main_ppid = (pid, ppid) if not main_pid else ((pid, ppid) if main_ppid == pid else (main_pid, main_ppid))
-    return main_pid and (int(main_pid) if int(main_pid) not in ignore_pid else None)
+        main_pid, main_ppid = (pid, ppid) if not main_pid else \
+            ((pid, ppid) if main_ppid == pid else (main_pid, main_ppid))
+    return main_pid and (int(main_pid)
+                         if int(main_pid) not in ignore_pid else None)
 

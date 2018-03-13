@@ -23,7 +23,8 @@ class TokenAcquirer(ABC):
         self.key = None
 
     def update(self):
-        self.auth(self.session.get(self.host, proxies=self.proxies, headers=self.headers, timeout=3))
+        self.auth(self.session.get(
+            self.host, proxies=self.proxies, headers=self.headers, timeout=3))
 
     @abstractmethod
     def auth(self, resp):
@@ -64,8 +65,10 @@ class TokenAcquirer(ABC):
                 S.append(A)
             elif 2048 > A:
                 S.append(shift_right_for_js(A, 6) | 192)
-            elif 55296 == (64512 & A) and v + 1 < len(text) and 56320 == (64512 & ord(text[v + 1])):
-                A = 65536 + shift_left_for_js((1023 & A), 10) + (1023 & ord(text[v]))
+            elif 55296 == (64512 & A) and v + 1 < len(text) \
+                    and 56320 == (64512 & ord(text[v + 1])):
+                A = 65536 + shift_left_for_js((1023 & A), 10) + \
+                    (1023 & ord(text[v]))
                 S.append(shift_right_for_js(A, 18) | 240)
                 S.append(shift_right_for_js(A, 12) & 63 | 128)
                 S.append(63 & A | 128)
@@ -119,9 +122,11 @@ class BaiduAcquirer(TokenAcquirer):
     host = "http://fanyi.baidu.com/"
 
     def update(self):
-        self.session.get(self.host, proxies=self.proxies, headers=self.headers, timeout=3)
+        self.session.get(
+            self.host, proxies=self.proxies, headers=self.headers, timeout=3)
         # 要连发两次才能用
-        self.auth(self.session.get(self.host, proxies=self.proxies, headers=self.headers, timeout=3))
+        self.auth(self.session.get(
+            self.host, proxies=self.proxies, headers=self.headers, timeout=3))
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.kwargs["token"] = self.token
@@ -133,13 +138,15 @@ class BaiduAcquirer(TokenAcquirer):
 
     def adjust(self, text):
         if len(text) > 30:
-            return text[0: 10] + text[len(text) // 2 - 5: len(text) // 2 + 5] + text[-10:]
+            return text[0: 10] + \
+                   text[len(text) // 2 - 5: len(text) // 2 + 5] + text[-10:]
         return super(BaiduAcquirer, self).adjust(text)
 
 
 class GoogleAcquirer(TokenAcquirer):
     host = 'https://translate.google.cn'
-    RE_TKK = re.compile(r'TKK=eval\(\'\(\(function\(\)\{(.+?)\}\)\(\)\)\'\);', re.DOTALL)
+    RE_TKK = re.compile(
+        r'TKK=eval\(\'\(\(function\(\)\{(.+?)\}\)\(\)\)\'\);', re.DOTALL)
 
     def auth(self, resp):
         code = str(self.RE_TKK.search(resp.text).group(1)).replace('var ', '')
@@ -158,7 +165,7 @@ class GoogleAcquirer(TokenAcquirer):
                             keys[name] = node.value.n
                         # the value can sometimes be negative
                         elif isinstance(node.value, ast.UnaryOp) and \
-                                isinstance(node.value.op, ast.USub):  # pragma: nocover
+                                isinstance(node.value.op, ast.USub):
                             keys[name] = -node.value.operand.n
                 elif isinstance(node, ast.Return):
                     # parameters should be set after this point

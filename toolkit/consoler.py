@@ -122,7 +122,8 @@ class CustomInteractiveInterpreter(InteractiveInterpreter):
             ThreadedStream.push()
             source_to_eval = ''.join(self.buffer + [source])
             # print("exec source : %s"%source_to_eval)
-            result = super(CustomInteractiveInterpreter, self).runsource(source_to_eval)
+            result = super(
+                CustomInteractiveInterpreter, self).runsource(source_to_eval)
             # print("result: %s"%result)
             if (self.more or result) and source != "\n":
                 self.buffer.append(source)
@@ -155,7 +156,8 @@ class Consoler(object):
         self.namespace = locals()
 
     def _init_console(self, console_host, console_port):
-        console_thread = Thread(target=self._console, args=(console_host, console_port))
+        console_thread = Thread(
+            target=self._console, args=(console_host, console_port))
         console_thread.setDaemon(True)
         console_thread.start()
 
@@ -177,7 +179,9 @@ class Consoler(object):
             client.send(cmd.encode())
             result = client.recv(102400)
             if result:
-                print(result.decode(), end="" if result.count(b"...") or result == b">>> " else "\n")
+                print(result.decode(),
+                      end="" if result.count(b"...") or result == b">>> "
+                      else "\n")
             else:
                 break
         client.close()
@@ -221,6 +225,9 @@ class Consoler(object):
         self.alive = False
 
     def enrich_parser_arguments(self):
-        self.parser.add_argument("--console", help="start a console. ", action="store_true")
-        self.parser.add_argument("--console-host", help="console host. ", default="")
-        self.parser.add_argument("--console-port", type=int, help="console port. ", default=7878)
+        self.parser.add_argument(
+            "--console", help="start a console. ", action="store_true")
+        self.parser.add_argument(
+            "--console-host", help="console host. ", default="")
+        self.parser.add_argument(
+            "--console-port", type=int, help="console port. ", default=7878)

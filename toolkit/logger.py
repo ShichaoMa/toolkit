@@ -24,7 +24,8 @@ class Logger(object, metaclass=Singleton):
     """
     logger的实现
     """
-    format_string = '%(asctime)s [%(name)s:%(threadname)s]%(levelname)s: %(message)s'
+    format_string = \
+        '%(asctime)s [%(name)s:%(threadname)s]%(levelname)s: %(message)s'
 
     def __init__(self, settings, name=None):
         self.name = name or _find_caller_name(steps=2)
@@ -73,7 +74,9 @@ class Logger(object, metaclass=Singleton):
             def wrapper(*args, **kwargs):
                 extra = kwargs.pop("extra", {})
                 extra.setdefault("level", item)
-                extra.setdefault("timestamp", datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ'))
+                extra.setdefault("timestamp",
+                                 datetime.datetime.utcnow().strftime(
+                                     '%Y-%m-%dT%H:%M:%S.%fZ'))
                 extra.setdefault("logger", self.name)
                 extra.setdefault("threadname", current_thread().getName())
                 kwargs["extra"] = extra
