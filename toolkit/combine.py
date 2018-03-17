@@ -16,7 +16,7 @@ def combine(part, words=(), keywords=(), after=True, extend=False):
       extend参数确定是否是继承关系，这决定了在调用part方法时使用part对象还是被组合的对象
       对于__init__方法，Service先调用自己的__init__然后再调用Consoler的__init__方法,
       调用Consoler时传入的参数为words, keywords指定，必须为Service实例属性，如:
-      ("args.console_host", "args.console_port"), keywords 与args参数一样，
+      ("args.console_host", "args.console_port"), keywords 与words参数一样，
       不过在传入__init__时使用关键字参数的形式。
       属性优先级：Service实例属性，Console类属性，Service类属性，Console实例属性。
       """
