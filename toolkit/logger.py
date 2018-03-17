@@ -17,15 +17,14 @@ __all__ = ["UDPLogstashHandler", "Logger"]
 class UDPLogstashHandler(handlers.DatagramHandler):
     """Python logging handler for Logstash. Sends events over UDP."""
     def makePickle(self, record):
-        return self.formatter.format(record).encode("utf-8")
+        return self.formatter.format(record).encode()
 
 
 class Logger(object, metaclass=Singleton):
     """
     logger的实现
     """
-    format_string = \
-        '%(asctime)s [%(name)s:%(threadname)s]%(levelname)s: %(message)s'
+    format_string = '%(asctime)s [%(name)s:%(thread)s]%(level)s: %(message)s'
 
     def __init__(self, settings, name=None):
         self.name = name or _find_caller_name(steps=2)
@@ -78,7 +77,7 @@ class Logger(object, metaclass=Singleton):
                                  datetime.datetime.utcnow().strftime(
                                      '%Y-%m-%dT%H:%M:%S.%fZ'))
                 extra.setdefault("logger", self.name)
-                extra.setdefault("threadname", current_thread().getName())
+                extra.setdefault("thread", current_thread().getName())
                 kwargs["extra"] = extra
                 return func(*args, **kwargs)
             return wrapper
