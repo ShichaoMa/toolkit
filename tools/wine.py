@@ -106,7 +106,7 @@ if __name__ == "__main__":
     import sys
     # 创建一个酒杯(塔)
     cup = Cup(None, None, 0)
-    # 倒入105杯酒
+    # 倒入酒
     cup.pour(int(sys.argv[1]))
-    # 求第17行，第6列中的酒量
+    # 输出酒塔
     cup.print(int(sys.argv[2]), int(sys.argv[3]))
