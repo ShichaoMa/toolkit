@@ -11,7 +11,7 @@ class Cup(object):
             cap cap
           cap cap cap
             ......
-    求：倒入count杯酒时，第line行第col例杯中的酒量。
+    求：倒入count杯酒时，第line行第col列杯中的酒量。
     """
     _total = set()
 
@@ -68,6 +68,38 @@ class Cup(object):
     def total(self):
         return reduce(lambda x, y: x+y, [i.capacity for i in self._total])
 
+    def __str__(self):
+        return str(self.capacity)
+
+    __repr__ = __str__
+
+    def print(self, line, col):
+        find = None
+        blunk_f = "{:^%s}" % (line * 15)
+        ele_f = " {:-^13} "
+        this = self
+
+        for i in range(line):
+            that = this
+            string = ele_f.format(str(that))
+            count = 1
+
+            while that.right_sibling:
+                count += 1
+                that = that.right_sibling
+
+                if i == line - 1 and count == col:
+                    string += ele_f.replace("-", "=").format(str(that))
+                    find = that
+                else:
+                    string += ele_f.format(str(that))
+
+            print(blunk_f.format(string))
+            this = this.left_child
+            
+        if find:
+            print(f"\n第{line}行,第{col}列杯子中的酒量为{find.capacity}。")
+
 
 if __name__ == "__main__":
     # 创建一个酒杯(塔)
@@ -75,5 +107,8 @@ if __name__ == "__main__":
     # 倒入105杯酒
     cup.pour(105)
     # 求第17行，第6列中的酒量
-    print(cup.find(17, 6).capacity)
+    print(cup.find(17, 6))
+
     print(cup.total())
+
+    cup.print(23, 11)
