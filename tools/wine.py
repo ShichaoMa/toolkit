@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 from fractions import Fraction
 from toolkit import cache_property
 from functools import reduce
@@ -49,7 +50,7 @@ class Cup(object):
         self._total.add(self)
         remainder = self.capacity + count - 1
         if remainder > 0:
-            self.capacity = Fraction(1, 1)
+            self.capacity = 1
             self.left_child.pour(remainder/2)
             self.right_child.pour(remainder/2)
         else:
@@ -69,7 +70,7 @@ class Cup(object):
         return reduce(lambda x, y: x+y, [i.capacity for i in self._total])
 
     def __str__(self):
-        return str(self.capacity)
+        return str(Fraction(self.capacity))
 
     __repr__ = __str__
 
@@ -96,19 +97,16 @@ class Cup(object):
 
             print(blunk_f.format(string))
             this = this.left_child
-            
+
         if find:
             print(f"\n第{line}行,第{col}列杯子中的酒量为{find.capacity}。")
 
 
 if __name__ == "__main__":
+    import sys
     # 创建一个酒杯(塔)
-    cup = Cup(None, None, Fraction(0, 1))
+    cup = Cup(None, None, 0)
     # 倒入105杯酒
-    cup.pour(105)
+    cup.pour(int(sys.argv[1]))
     # 求第17行，第6列中的酒量
-    print(cup.find(17, 6))
-
-    print(cup.total())
-
-    cup.print(23, 11)
+    cup.print(int(sys.argv[2]), int(sys.argv[3]))
