@@ -14,10 +14,9 @@ import logging
 import warnings
 
 from queue import Empty
-from itertools import zip_longest
 from functools import wraps, reduce, partial
 
-__version__ = '1.7.2'
+__version__ = '1.7.20'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
@@ -435,8 +434,16 @@ def load_function(function_str):
     :param function_str: module1.module2.function
     :return: function
     """
+    warnings.warn("load_function() is a deprecated alias since 1.7.19, "
+                  "use load() instead.",
+                  DeprecationWarning, 2)
     mod_str, _sep, function_str = function_str.rpartition('.')
-    return getattr(load_module(mod_str), function_str)
+    if mod_str:
+        return getattr(load_module(mod_str), function_str)
+    else:
+        # 可能整体是一个模块
+        return load_module(function_str)
+    
 
 load_class = load_function
 
@@ -447,7 +454,36 @@ def load_module(module_str):
     :param module_str: os.path
     :return: os.path
     """
+    warnings.warn("load_function() is a deprecated alias since 1.7.19, "
+                  "use load() instead.",
+                  DeprecationWarning, 2)
     return __import__(module_str, fromlist=module_str.split(".")[-1])
+
+
+def load(prop_str):
+    """
+    返回字符串表示的模块、函数、类、若类的属性等
+    :param prop_str: module1.class.function....
+    :return: function
+    """
+    attr_list = []
+    # 每次循环将prop_str当模块路径查找，成功则返回，
+    # 失败则将模块路径回退一级，将回退的部分转换成属性
+    # 至到加载模块成功后依次从模块中提取属性。
+    ex = None
+
+    while prop_str:
+        try:
+            obj = __import__(prop_str, fromlist=prop_str.split(".")[-1])
+            for attr in attr_list:
+                obj = getattr(obj, attr)
+            return obj
+        except (AttributeError, ImportError) as e:
+            prop_str, _sep, attr_str = prop_str.rpartition('.')
+            attr_list.insert(0, attr_str)
+            ex = e
+    else:
+        raise ex
 
 
 def free_port():
@@ -553,8 +589,10 @@ def _find_caller_name(is_func=False, steps=1):
     if is_func:
         return co.co_name
     else:
-        return os.path.basename(co.co_filename).split(".")[0]
-
+        filename = os.path.basename(co.co_filename).split(".")[0]
+        if filename == "__init__":
+            filename = os.path.basename(os.path.dirname(co.co_filename))
+        return filename
 
 class LazyDict(object):
     """
@@ -754,6 +792,27 @@ def shift_left_for_js(num, count):
 def shift_right_for_js(num, count):
     """位运算左移js版"""
     return int_overflow(num >> count)
+
+
+async def readexactly(stream, n):
+    """
+    asyncio stream read
+    :param steam:
+    :param n:
+    :return:
+    """
+    if hasattr(stream, "_exception") and stream._exception is not None:
+        raise stream._exception
+
+    blocks = []
+    while n > 0:
+        block = await stream.read(n)
+        if not block:
+            break
+        blocks.append(block)
+        n -= len(block)
+
+    return b''.join(blocks)
 
 
 if __name__ == "__main__":

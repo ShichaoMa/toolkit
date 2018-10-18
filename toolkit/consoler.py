@@ -152,8 +152,8 @@ class Consoler(object):
         if console:
             self._start_client(host, port)
         elif debug:
+            self.namespace = locals()
             self._init_console(host, port)
-        self.namespace = locals()
 
     def _init_console(self, console_host, console_port):
         console_thread = Thread(

@@ -1,4 +1,5 @@
 import json
+import time
 
 
 def merge_conflict(src_template, returns):
@@ -80,23 +81,29 @@ def baidu(self, src_data, proxies, src_template, acquirer):
                 json.loads(resp.text)["trans_result"]['phonetic'])).split("\n"))
 
 
-def qq(self, src_data, proxies, src_template):
+def qq(self, src_data, proxies, src_template, acquirer):
     """
     腾讯翻译的实现, 腾讯翻译最长只能翻译2000个字符
     :param src_data: 原生数据
     :param proxies: 代理
     :param src_template: 原生数据模板
+    :param acquirer: cookie获取器
     :return: 结果
     """
     url = 'http://fanyi.qq.com/api/translate'
-    resp = self.session.post(
-        url, data={'source': 'auto', 'target': 'en', 'sourceText': src_data},
-        headers=self.headers, timeout=self.translate_timeout, proxies=proxies)
-    return merge_conflict(
-        src_template,
-        [record["targetText"] for record in json.loads(
-            resp.text)["translate"]["records"]
-         if record.get("sourceText") != "\n"])
+    with acquirer:
+        acquirer.headers.update(self.headers)
+        resp = self.session.post(
+            url, data={'source': 'auto',
+                       'target': 'en',
+                       'sourceText': src_data,
+                       'sessionUuid': 'translate_uuid%d' % (time.time()*1000)},
+            headers=acquirer.headers, timeout=self.translate_timeout, proxies=proxies)
+        return merge_conflict(
+            src_template,
+            [record["targetText"] for record in json.loads(
+                resp.text)["translate"]["records"]
+             if record.get("sourceText") != "\n"])
 
 
 def google(self, src_data, proxies, src_template, acquirer):

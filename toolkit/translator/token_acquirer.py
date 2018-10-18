@@ -5,7 +5,7 @@ from abc import abstractmethod, ABC
 
 from .. import unsigned_right_shift, shift_left_for_js, shift_right_for_js
 
-__all__ = ["BaiduAcquirer", "GoogleAcquirer", "BingAcquirer"]
+__all__ = ["BaiduAcquirer", "GoogleAcquirer", "BingAcquirer", "QqAcquirer"]
 
 
 class TokenAcquirer(ABC):
@@ -14,23 +14,44 @@ class TokenAcquirer(ABC):
     @property
     @abstractmethod
     def host(self):
+        """提供host地址来获取必要信息"""
         pass
 
     def __init__(self, session, headers, proxies):
+        """
+        初始化acquirer信息
+        :param session:
+        :param headers:
+        :param proxies:
+        """
         self.session = session
         self.headers = headers
         self.proxies = proxies
         self.key = None
 
     def update(self):
+        """
+        更新认证信息，使用resp调用auth方法
+        :return:
+        """
         self.auth(self.session.get(
             self.host, proxies=self.proxies, headers=self.headers, timeout=3))
 
     @abstractmethod
     def auth(self, resp):
+        """
+        可以从resp获取必要信息，将必要信息字段存储在self中。
+        :param resp:
+        :return:
+        """
         pass
 
     def enrich(self, kwargs):
+        """
+        每次生成acquirer之后，调用enrich方法，将之前获取过的必要信息放回
+        :param kwargs:
+        :return:
+        """
         self.kwargs = kwargs
         if kwargs:
             cookies = kwargs.pop("cookies", None)
@@ -39,14 +60,31 @@ class TokenAcquirer(ABC):
             self.__dict__.update(kwargs)
 
     def adjust(self, text):
+        """
+        百度,google调用acquire方法所需参数专用
+        :param text:
+        :return:
+        """
         return text
 
     def __enter__(self):
+        """
+        每次使用acquirer之前，若不存在key，则主动发起更新
+        :return:
+        """
         if not self.key:
             self.update()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        每次退出acquirer之前，若发生异常，则主动发起更新。
+        保存必要信息到kwargs。供下次生成acquirer使用。
+        :param exc_type:
+        :param exc_val:
+        :param exc_tb:
+        :return:
+        """
         if exc_type:
             self.update()
         self.kwargs["cookies"] = self.session.cookies
@@ -54,6 +92,11 @@ class TokenAcquirer(ABC):
         return exc_type is None
 
     def acquire(self, text):
+        """
+        获取字段校验码。
+        :param text:
+        :return:
+        """
         if not self.key:
             self.update()
         text = self.adjust(text)
@@ -108,7 +151,7 @@ class BingAcquirer(TokenAcquirer):
         super(BingAcquirer, self).__init__(host, session, headers)
 
     def auth(self, resp):
-        self.key = "0"
+        self.key = "0" # 无用，占位
 
     def acquire(self, text):
         code = 0
@@ -141,6 +184,24 @@ class BaiduAcquirer(TokenAcquirer):
             return text[0: 10] + \
                    text[len(text) // 2 - 5: len(text) // 2 + 5] + text[-10:]
         return super(BaiduAcquirer, self).adjust(text)
+
+
+class QqAcquirer(TokenAcquirer):
+    host = "http://fanyi.qq.com/"
+
+    def auth(self, resp):
+        self.key = "0" # 无用，占位
+        self.headers = dict()
+        self.headers["Origin"] = "http://fanyi.qq.com"
+        self.headers["X-Requested-With"] = "XMLHttpRequest"
+        self.headers["Cookie"] = ";".join(re.findall(r'document.cookie = "(.*)"', resp.text))
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.kwargs["headers"] = self.headers
+        return super(QqAcquirer, self).__exit__(exc_type, exc_val, exc_tb)
+
+    def acquire(self, text):
+        return NotImplemented
 
 
 class GoogleAcquirer(TokenAcquirer):

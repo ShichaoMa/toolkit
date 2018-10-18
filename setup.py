@@ -1,11 +1,38 @@
 # -*- coding:utf-8 -*-
+import os
+import re
+
 try:
     from setuptools import setup, find_packages
 except:
     from distutils.core import setup
 
 
-VERSION = '1.7.2'
+def get_version(package):
+    """
+    Return package version as listed in `__version__` in `__init__.py`.
+    """
+    init_py = open(os.path.join(package, '__init__.py')).read()
+    mth = re.search("__version__\s?=\s?['\"]([^'\"]+)['\"]", init_py)
+    if mth:
+        return mth.group(1)
+    else:
+        raise RuntimeError("Cannot find version!")
+
+
+def install_requires():
+    """
+    Return requires in requirements.txt
+    :return:
+    """
+    try:
+        with open("requirements.txt") as f:
+            return [line.strip() for line in f.readlines() if line.strip()]
+    except OSError:
+        return []
+
+
+VERSION = get_version("toolkit")
 
 AUTHOR = "cn"
 
@@ -26,8 +53,6 @@ KEYWORDS = "tools function"
 
 LICENSE = "MIT"
 
-PACKAGES = ["toolkit", "toolkit.translator"]
-
 setup(
     name=NAME,
     version=VERSION,
@@ -39,13 +64,18 @@ setup(
         'Intended Audience :: Developers',
         'Operating System :: OS Independent',
     ],
+    entry_points={
+        "console_scripts": [
+            "ver-inc = toolkit.package_control:change_version",
+        ]
+    },
     keywords=KEYWORDS,
     author=AUTHOR,
     author_email=AUTHOR_EMAIL,
     url=URL,
     license=LICENSE,
-    packages=PACKAGES,
-    install_requires=["python-json-logger", "redis", "kafka-python", "requests"],
+    packages=find_packages(),
+    install_requires=install_requires(),
     include_package_data=True,
     zip_safe=True,
 )

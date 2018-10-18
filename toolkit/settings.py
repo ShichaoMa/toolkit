@@ -1,8 +1,8 @@
 """
 settings模块使用方法
-In [3]: from toolkit.settings import SettingsWrapper
+In [3]: from toolkit.settings import SettingsLoader
 
-In [4]: sw = SettingsWrapper()
+In [4]: sw = SettingsLoader()
 
 In [5]: settings = sw.load({"a": 1}， "settings")
 
@@ -52,7 +52,9 @@ In [28]: type(settings2.c.d)
 Out[28]: toolkit.frozen.Frozen
 """
 import os
+import copy
 import types
+import logging
 import importlib
 
 from numbers import Number
@@ -60,9 +62,11 @@ from collections import UserDict
 from collections.abc import Collection, MutableSequence, MutableSet, MutableMapping
 
 from . import duplicate
-from .frozen import Frozen
+from .frozen import FrozenSettings
 
-__all__ = ["Settings", "SettingsLoader"]
+__all__ = ["Settings", "SettingsLoader", "FrozenSettings"]
+
+logger = logging.getLogger("toolkit.settings")
 
 
 class Settings(UserDict):
@@ -136,7 +140,7 @@ class SettingsLoader(object):
             else:
                 self._load(settings)
 
-        return Frozen(self.settings)
+        return FrozenSettings(self.settings)
 
     def load_from_string(self, settings_string='', module_name='customsettings'):
         """
@@ -147,26 +151,27 @@ class SettingsLoader(object):
         """
         try:
             mod = types.ModuleType(module_name)
-            exec(settings_string in mod.__dict__)
+            exec(settings_string, mod.__dict__)
         except TypeError:
-            print("Could not import settings")
+            logger.warning("Could not import settings from string.")
             mod = None
         try:
             self.merge(self.settings, self._convert_to_dict(mod))
         except ImportError:
-            print("Settings unable to be loaded")
+            logger.warning("Settings from string unable to be loaded.")
 
     def _load(self, setting_module):
         try:
             if isinstance(setting_module, str):
                 if setting_module[-3:] == '.py':
-                    setting_module = setting_module[:-3]
+                    setting_module = setting_module[:-3].replace(
+                        os.sep, ".").strip(".")
                 settings = importlib.import_module(setting_module)
             else:
                 settings = setting_module
             self.merge(self.settings, self._convert_to_dict(settings))
         except ImportError:
-            print("Cannot found %s" % setting_module)
+            logger.warning("Cannot found %s." % setting_module)
 
     def merge(self, settings, new_settings):
         """
@@ -200,6 +205,6 @@ class SettingsLoader(object):
         """
         allow_types = tuple(self.allow_types)
         return dict(
-            (k, getattr(settings, k)) for k in dir(settings)
+            (k, copy.deepcopy(getattr(settings, k))) for k in dir(settings)
             if k not in self.ignore and isinstance(
                 getattr(settings, k), allow_types))

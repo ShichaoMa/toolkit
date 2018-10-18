@@ -1,6 +1,6 @@
 from collections.abc import MutableSequence, MutableMapping, MutableSet
 
-__all__ = ["Frozen"]
+__all__ = ["Frozen", "FrozenSettings"]
 
 
 class Frozen(MutableSequence, MutableMapping):
@@ -9,10 +9,10 @@ class Frozen(MutableSequence, MutableMapping):
     """
     def __new__(cls, json):
         if isinstance(json, (MutableSequence, MutableSet)):
-            instance = super(Frozen, cls).__new__(cls)
+            instance = super().__new__(cls)
             instance.json = [cls(val) for val in json]
         elif isinstance(json, MutableMapping):
-            instance = super(Frozen, cls).__new__(cls)
+            instance = super().__new__(cls)
             instance.json = json
         else:
             instance = json
@@ -55,6 +55,10 @@ class Frozen(MutableSequence, MutableMapping):
         return str(self.json)
 
     __repr__ = __str__
+
+
+class FrozenSettings(Frozen):
+    pass
 
 
 if __name__ == "__main__":
