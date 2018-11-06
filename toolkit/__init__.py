@@ -16,7 +16,7 @@ import warnings
 from queue import Empty
 from functools import wraps, reduce, partial
 
-__version__ = '1.7.20'
+__version__ = '1.7.21'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
@@ -594,6 +594,7 @@ def _find_caller_name(is_func=False, steps=1):
             filename = os.path.basename(os.path.dirname(co.co_filename))
         return filename
 
+
 class LazyDict(object):
     """
     懒加载dict, 提供一个转换函数，只有在获取dict中的值时，才对指定值进行turn函数的调用
@@ -683,23 +684,22 @@ class {}(object):
         return {}
 """
 
-    args = inspect.getfullargspec(func).args
+    args = inspect.getargspec(func).args
     try:
         args.remove("self")
     except ValueError:
         pass
+
     class_name = func.__name__.capitalize()
-    init_arg = ", ".join(args)
+    init_arg = ", ".join(args) if args else ""
     init_body = "".join(
         "self.{%s} = {%s}\n        " % (
-            index, index) for index in range(len(args))).format(*args)
-    hash_body = " + ".join("hash(self.{})".format(arg) for arg in args)
-    eq_body = " and ".join("self.{0} == other.{0}".format(arg) for arg in args)
-    iter_body = ", self.".join(args)
+            index, index) for index in range(len(args))).format(*args) if args else "pass"
+    hash_body = " + ".join("hash(self.{})".format(arg) for arg in args) if args else "0"
+    eq_body = " and ".join("self.{0} == other.{0}".format(arg) for arg in args) if args else "True"
     namespace = dict(__name__='entries_%s' % class_name)
-    exec(cls_tmpl.format(
-        class_name, init_arg, init_body, hash_body, eq_body, iter_body),
-        namespace)
+    class_str = cls_tmpl.format(class_name, init_arg, init_body, hash_body, eq_body)
+    exec(class_str, namespace)
     return namespace[class_name]
 
 
@@ -733,6 +733,38 @@ def cache_method(timeout=10):
                 return stored.result
         return inner
     return cache
+
+
+def cache_method_for_updated(func):
+    """
+    缓存方法调用结果直到实例的updated返回True，与cache_method类似。
+    @param func:
+    @return:
+    """
+    entry_class = free_namedtuple(func)
+    data = dict()
+
+    @wraps(func)
+    def inner(*args, **kwargs):
+        self = args[0]
+        # 没有更新方法(直接使用子类，而不通过cache)，不进行缓存操作
+        if not self.updated:
+            return func(*args, **kwargs)
+        # 如果pandora配置已更新，则清除所有缓存
+        if self.updated():
+            data.clear()
+        entry = entry_class(*args[1:], **kwargs)
+        stored = data.get(entry, entry)
+
+        if entry not in data:
+            entry.result = func(*args, **kwargs)
+            if entry.result:
+                data[entry] = entry
+            return entry.result
+        else:
+            return stored.result
+
+    return inner
 
 
 class SafeValue(object):
@@ -813,6 +845,41 @@ async def readexactly(stream, n):
         n -= len(block)
 
     return b''.join(blocks)
+
+
+class NotImplementedProp(object):
+    """
+    用来对子类需要实现的类属性进行占位
+    """
+    def __get__(self, instance, owner):
+        return NotImplemented
+
+
+class classproperty(object):
+    """
+    property只能用于实例方法到实例属性的转换，使用classproperty来支持类方法到类属性的转换
+    """
+    def __init__(self, func):
+        self.func = func
+
+    def __get__(self, instance, owner):
+        return self.func(owner)
+
+
+def cache_classproperty(func):
+    """
+    缓存类属性，只计算一次
+    :param func:
+    :return:
+    """
+    @classproperty
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        prop_name = "_" + func.__name__
+        if prop_name not in args[0].__dict__:
+            setattr(args[0], prop_name, func(*args, **kwargs))
+        return args[0].__dict__[prop_name]
+    return wrapper
 
 
 if __name__ == "__main__":

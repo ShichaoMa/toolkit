@@ -1,5 +1,12 @@
+.coverage
 *.pyc
-idea
-*.egg*
-dist
-pytest_cache
+*egg-info
+dist/
+.pytest_cache
+.eggs/
+.idea/
+htmlcov/
+*log
+*logs
+*lock.json
+node_modules/

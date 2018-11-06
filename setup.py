@@ -1,11 +1,10 @@
 # -*- coding:utf-8 -*-
 import os
 import re
+import string
 
-try:
-    from setuptools import setup, find_packages
-except:
-    from distutils.core import setup
+from contextlib import contextmanager
+from setuptools import setup, find_packages
 
 
 def get_version(package):
@@ -53,29 +52,49 @@ KEYWORDS = "tools function"
 
 LICENSE = "MIT"
 
-setup(
-    name=NAME,
-    version=VERSION,
-    description=DESCRIPTION,
-    long_description=LONG_DESCRIPTION,
-    classifiers=[
-        'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python',
-        'Intended Audience :: Developers',
-        'Operating System :: OS Independent',
-    ],
-    entry_points={
-        "console_scripts": [
-            "ver-inc = toolkit.package_control:change_version",
-        ]
-    },
-    keywords=KEYWORDS,
-    author=AUTHOR,
-    author_email=AUTHOR_EMAIL,
-    url=URL,
-    license=LICENSE,
-    packages=find_packages(),
-    install_requires=install_requires(),
-    include_package_data=True,
-    zip_safe=True,
-)
+
+@contextmanager
+def cfg_manage(cfg_tpl_filename):
+    if os.path.exists(cfg_tpl_filename):
+        cfg_file_tpl = open(cfg_tpl_filename)
+        buffer = cfg_file_tpl.read()
+        try:
+            with open(cfg_tpl_filename.rstrip(".tpl"), "w") as cfg_file:
+                cfg_file.write(string.Template(buffer).substitute(
+                    pwd=os.path.abspath(os.path.dirname(__file__))))
+            yield
+        finally:
+            cfg_file_tpl.close()
+    else:
+        yield
+
+
+with cfg_manage(__file__.replace(".py", ".cfg.tpl")):
+    setup(
+        name=NAME,
+        version=VERSION,
+        description=DESCRIPTION,
+        long_description=LONG_DESCRIPTION,
+        classifiers=[
+            'License :: OSI Approved :: MIT License',
+            'Programming Language :: Python',
+            'Intended Audience :: Developers',
+            'Operating System :: OS Independent',
+        ],
+        entry_points={
+            "console_scripts": [
+                "ver-inc = toolkit.package_control:change_version",
+            ]
+        },
+        keywords=KEYWORDS,
+        author=AUTHOR,
+        author_email=AUTHOR_EMAIL,
+        url=URL,
+        license=LICENSE,
+        packages=find_packages(exclude=("tests*",)),
+        install_requires=install_requires(),
+        include_package_data=True,
+        zip_safe=True,
+        setup_requires=["pytest-runner"],
+        tests_require=["pytest-apistellar", "pytest-asyncio", "pytest-cov"]
+    )
