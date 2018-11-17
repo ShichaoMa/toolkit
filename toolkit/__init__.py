@@ -14,9 +14,10 @@ import logging
 import warnings
 
 from queue import Empty
+from future.utils import raise_from
 from functools import wraps, reduce, partial
 
-__version__ = '1.7.21'
+__version__ = '1.7.22'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
@@ -471,7 +472,6 @@ def load(prop_str):
     # 失败则将模块路径回退一级，将回退的部分转换成属性
     # 至到加载模块成功后依次从模块中提取属性。
     ex = None
-
     while prop_str:
         try:
             obj = __import__(prop_str, fromlist=prop_str.split(".")[-1])
@@ -481,7 +481,10 @@ def load(prop_str):
         except (AttributeError, ImportError) as e:
             prop_str, _sep, attr_str = prop_str.rpartition('.')
             attr_list.insert(0, attr_str)
-            ex = e
+            try:
+                raise_from(ImportError(), e)
+            except Exception as e:
+                ex = e
     else:
         raise ex
 
@@ -685,13 +688,11 @@ class {}(object):
 """
 
     args = inspect.getargspec(func).args
-    try:
-        args.remove("self")
-    except ValueError:
-        pass
+    if args and args[0] in ["self", "cls"]:
+        args.pop(0)
 
     class_name = func.__name__.capitalize()
-    init_arg = ", ".join(args) if args else ""
+    init_arg = ", ".join(args + "=None" for args in args) if args else ""
     init_body = "".join(
         "self.{%s} = {%s}\n        " % (
             index, index) for index in range(len(args))).format(*args) if args else "pass"

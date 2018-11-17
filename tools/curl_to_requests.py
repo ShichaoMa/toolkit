@@ -27,7 +27,7 @@ main()
         dict(tuple(v.strip() for v in header.split(":", 1)) for header in re.findall(r"-H '(.*?)'", curl_cmd)), indent=4)
     form = re_search(r"--data ?'(.*?)'", curl_cmd, default=None)
 
-    json_data = re_search(r"--data-binary \$'(.*?)'", curl_cmd, default=None)
+    json_data = re_search(r"--data-binary \$?'(.*?)'", curl_cmd, default=None)
     if form:
         form = json.dumps(dict(tuple(param.split("=", 1)) for param in form.replace("+", " ").split("&")), indent=4)
     if json_data:
