@@ -17,7 +17,7 @@ from queue import Empty
 from future.utils import raise_from
 from functools import wraps, reduce, partial
 
-__version__ = '1.7.22'
+__version__ = '1.7.21'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
