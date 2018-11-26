@@ -482,7 +482,7 @@ def load(prop_str):
             prop_str, _sep, attr_str = prop_str.rpartition('.')
             attr_list.insert(0, attr_str)
             try:
-                raise_from(ImportError(), e)
+                raise_from(ImportError(e), e)
             except Exception as e:
                 ex = e
     else:
