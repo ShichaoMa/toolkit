@@ -17,7 +17,7 @@ from queue import Empty
 from future.utils import raise_from
 from functools import wraps, reduce, partial
 
-__version__ = '1.7.23'
+__version__ = '1.7.24'
 
 
 _ITERABLE_SINGLE_VALUES = dict, str, bytes
@@ -622,12 +622,16 @@ def cache_property(func):
     :param func:
     :return:
     """
-    @property
+    return property(property_cache(func))
+
+
+def property_cache(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         if func.__name__ not in args[0].__dict__:
             args[0].__dict__[func.__name__] = func(*args, **kwargs)
         return args[0].__dict__[func.__name__]
+
     return wrapper
 
 
