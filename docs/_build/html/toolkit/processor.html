@@ -1,0 +1,180 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="zh-CN">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>进度控制模块 &#8212; toolkity 1.7.5 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="基础模块" href="../toolkit.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-toolkit.processor">
+<span id="id1"></span><span id="module-processor"></span><h1>进度控制模块<a class="headerlink" href="#module-toolkit.processor" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="toolkit.processor.Processor">
+<em class="property">class </em><code class="descclassname">toolkit.processor.</code><code class="descname">Processor</code><span class="sig-paren">(</span><em>weight</em>, <em>update_callback</em>, <em>_from=0</em>, <em>to=100</em>, <em>skip=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/toolkit/processor.html#Processor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toolkit.processor.Processor" title="Permalink to this definition">¶</a></dt>
+<dd><p>进度管理器，管理收集指定区域业务逻辑流程中的进度执行情况，如现有一个函数执行某个功能，
+现需要掌握其执行进度，假设其整个流程可分为三步，分别是三个函数调用，其中进度权重大约是
+1:2:3，则创建一个processor，指定其weight为[1, 2, 3]，将processor传入该函数，并在
+该函数完成每步进行processor.update调用来更新进度，调用三次，则进度到达100%，
+如果每步的子函数需要进一步划分进度，则通过调用：</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">processor</span><span class="o">.</span><span class="n">hand_out</span><span class="p">(</span><span class="n">weight</span><span class="p">)</span> <span class="k">as</span> <span class="n">child_processor</span>
+    <span class="n">child_function</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">child_processor</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>child_processor将负责将该步的进度按权重分发到子函数中去。</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>weight</strong> – 将一个函数分成的工作区块数，如果是int类型，则是区作区块数，
+如果是[1, 4, 6…]类型，则指定了每个工作区块的工作量权重。</li>
+<li><strong>update_callback</strong> – 当完成规定的进度后，调用的函数</li>
+<li><strong>_from</strong> – </li>
+<li><strong>to</strong> – </li>
+<li><strong>skip</strong> – </li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="toolkit.processor.Processor.skip">
+<code class="descname">skip</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/toolkit/processor.html#Processor.skip"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toolkit.processor.Processor.skip" title="Permalink to this definition">¶</a></dt>
+<dd><p>通过判断下一个进度值是否小于当前进度来决定是否跳过
+&#64;return:</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toolkit.processor.Processor.skip_all">
+<code class="descname">skip_all</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/toolkit/processor.html#Processor.skip_all"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toolkit.processor.Processor.skip_all" title="Permalink to this definition">¶</a></dt>
+<dd><p>如果派生了子进度条，则通过判断子进度最大进度值来决定是否直接跳过子进度条
+&#64;return:</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toolkit.processor.Processor.update">
+<code class="descname">update</code><span class="sig-paren">(</span><em>message=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/toolkit/processor.html#Processor.update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toolkit.processor.Processor.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>将进度更新到下一个进度值
+&#64;param message:
+&#64;return:</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toolkit.processor.Processor.hand_out">
+<code class="descname">hand_out</code><span class="sig-paren">(</span><em>weight</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/toolkit/processor.html#Processor.hand_out"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toolkit.processor.Processor.hand_out" title="Permalink to this definition">¶</a></dt>
+<dd><p>为子函数派生子进度条，子进度条根据权重分配父进度其中一个工作区块对应的进度区间
+&#64;param weight:
+&#64;return:</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="toolkit.processor.AsyncProcessor">
+<em class="property">class </em><code class="descclassname">toolkit.processor.</code><code class="descname">AsyncProcessor</code><span class="sig-paren">(</span><em>weight</em>, <em>update_callback</em>, <em>_from=0</em>, <em>to=100</em>, <em>skip=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/toolkit/processor.html#AsyncProcessor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toolkit.processor.AsyncProcessor" title="Permalink to this definition">¶</a></dt>
+<dd><p>update方法变为异步的形式</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>weight</strong> – 将一个函数分成的工作区块数，如果是int类型，则是区作区块数，
+如果是[1, 4, 6…]类型，则指定了每个工作区块的工作量权重。</li>
+<li><strong>update_callback</strong> – 当完成规定的进度后，调用的函数</li>
+<li><strong>_from</strong> – </li>
+<li><strong>to</strong> – </li>
+<li><strong>skip</strong> – </li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="toolkit.processor.AsyncProcessor.update">
+<code class="descname">update</code><span class="sig-paren">(</span><em>message=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/toolkit/processor.html#AsyncProcessor.update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toolkit.processor.AsyncProcessor.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>将进度更新到下一个进度值</p>
+<p>&#64;param message:
+&#64;return:</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="../toolkit.html" title="previous chapter">基础模块</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/toolkit/processor.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, cnaafhvk.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/toolkit/processor.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

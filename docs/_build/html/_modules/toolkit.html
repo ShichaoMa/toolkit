@@ -1,0 +1,1079 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="zh-CN">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>toolkit &#8212; toolkity 1.7.5 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for toolkit</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding:utf-8 -*-</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">pdb</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">types</span>
+<span class="kn">import</span> <span class="nn">ctypes</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">signal</span>
+<span class="kn">import</span> <span class="nn">typing</span>
+<span class="kn">import</span> <span class="nn">numbers</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">from</span> <span class="nn">queue</span> <span class="k">import</span> <span class="n">Empty</span>
+<span class="kn">from</span> <span class="nn">future.utils</span> <span class="k">import</span> <span class="n">raise_from</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">wraps</span><span class="p">,</span> <span class="n">reduce</span>
+
+<span class="n">__version__</span> <span class="o">=</span> <span class="s1">&#39;1.7.25&#39;</span>
+
+
+<div class="viewcode-block" id="test_prepare"><a class="viewcode-back" href="../toolkit.html#toolkit.test_prepare">[docs]</a><span class="k">def</span> <span class="nf">test_prepare</span><span class="p">(</span><span class="n">search_paths</span> <span class="p">:</span><span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    单元测试时，动态添加PYTHONPATH。</span>
+
+<span class="sd">    :param search_paths: 要将哪个路径加入PYTHONPATH</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">search_paths</span><span class="p">:</span>
+        <span class="n">search_paths</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;..&quot;</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">search_path</span> <span class="ow">in</span> <span class="n">search_paths</span><span class="p">:</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">search_path</span><span class="p">))</span>
+    <span class="k">del</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="s2">&quot;toolkit&quot;</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="debugger"><a class="viewcode-back" href="../toolkit.html#toolkit.debugger">[docs]</a><span class="k">def</span> <span class="nf">debugger</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    pdb的简单封装，在debug=False的情况下，不会打断点</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">debug</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="nb">eval</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()))</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">debug</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">if</span> <span class="n">debug</span><span class="p">:</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">pdb</span><span class="o">.</span><span class="n">Pdb</span><span class="p">()</span>
+        <span class="n">d</span><span class="o">.</span><span class="n">set_trace</span><span class="p">(</span> <span class="n">sys</span><span class="o">.</span><span class="n">_getframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_back</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="arg_to_iter"><a class="viewcode-back" href="../toolkit.html#toolkit.arg_to_iter">[docs]</a><span class="k">def</span> <span class="nf">arg_to_iter</span><span class="p">(</span><span class="n">arg</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    将非可迭代对象转换成可迭代对象</span>
+
+<span class="sd">    :param arg: 任意对象</span>
+<span class="sd">    :return: 列表对象</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">arg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="p">(</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="s1">&#39;__iter__&#39;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">arg</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">arg</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="Compose"><a class="viewcode-back" href="../toolkit.html#toolkit.Compose">[docs]</a><span class="k">class</span> <span class="nc">Compose</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    函数聚合器</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">functions</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="n">types</span><span class="o">.</span><span class="n">FunctionType</span><span class="p">],</span>
+                 <span class="n">is_pipe</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">aggregation</span><span class="p">:</span> <span class="n">types</span><span class="o">.</span><span class="n">FunctionType</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        连续调用多个函数, 如果is_pipe=True，依次连接所有函数的输出到输入。</span>
+<span class="sd">        否则，返回所有函数结果集列表将传aggregation中进行聚合。</span>
+
+<span class="sd">        :param functions: 需要连接的函数</span>
+<span class="sd">        :param is_pipe: 是否建立管道</span>
+<span class="sd">        :param aggregation: 聚合函数</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">functions</span> <span class="o">=</span> <span class="n">functions</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_pipe</span> <span class="o">=</span> <span class="n">is_pipe</span>
+        <span class="k">if</span> <span class="n">aggregation</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">aggregation</span> <span class="o">=</span> <span class="n">aggregation</span>
+
+<div class="viewcode-block" id="Compose.aggregation"><a class="viewcode-back" href="../toolkit.html#toolkit.Compose.aggregation">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">aggregation</span><span class="p">(</span><span class="n">iterable</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Iterable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        对所有运算结果进行逻辑与</span>
+
+<span class="sd">        :param iterable: 所有运算结果集合</span>
+<span class="sd">        :return: 运算结果True/False</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="ow">and</span> <span class="n">y</span><span class="p">,</span> <span class="n">iterable</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">],</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">AnyStr</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">AnyStr</span><span class="p">]):</span>
+        <span class="n">result_set</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">func</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">functions</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">index</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_pipe</span><span class="p">:</span>
+                <span class="n">result_set</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">result_set</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">result_set</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">aggregation</span><span class="p">(</span>
+            <span class="n">result_set</span> <span class="ow">or</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">result_set</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">result_set</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="duplicate"><a class="viewcode-back" href="../toolkit.html#toolkit.duplicate">[docs]</a><span class="k">def</span> <span class="nf">duplicate</span><span class="p">(</span><span class="n">iterable</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Iterable</span><span class="p">,</span>
+              <span class="n">keep</span><span class="p">:</span> <span class="n">types</span><span class="o">.</span><span class="n">FunctionType</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span>
+              <span class="n">key</span><span class="p">:</span><span class="n">types</span><span class="o">.</span><span class="n">FunctionType</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span>
+              <span class="n">reverse</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    保序去重</span>
+
+<span class="sd">    :param iterable: 需要去重的列表</span>
+<span class="sd">    :param keep: 去重的同时要对element做的操作</span>
+<span class="sd">    :param key: 使用哪一部分去重</span>
+<span class="sd">    :param reverse: 是否反向去重</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+    <span class="n">duplicator</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">reverse</span><span class="p">:</span>
+        <span class="n">iterable</span> <span class="o">=</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">iterable</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">iterable</span><span class="p">:</span>
+        <span class="n">keep_field</span> <span class="o">=</span> <span class="n">keep</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">key_words</span> <span class="o">=</span> <span class="n">key</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">key_words</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">duplicator</span><span class="p">:</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">keep_field</span><span class="p">)</span>
+            <span class="n">duplicator</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key_words</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">result</span><span class="p">))</span> <span class="k">if</span> <span class="n">reverse</span> <span class="k">else</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="strip"><a class="viewcode-back" href="../toolkit.html#toolkit.strip">[docs]</a><span class="k">def</span> <span class="nf">strip</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">chars</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">AnyStr</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    安全strip，如果不是字符串类型，直接返回。</span>
+
+<span class="sd">    :param value: 要strip的值</span>
+<span class="sd">    :param chars: 需要去掉的字符</span>
+<span class="sd">    :return: 结果</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">bytes</span><span class="p">,</span> <span class="nb">str</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="n">chars</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">value</span></div>
+
+
+<div class="viewcode-block" id="decode"><a class="viewcode-back" href="../toolkit.html#toolkit.decode">[docs]</a><span class="k">def</span> <span class="nf">decode</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">encoding</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    decode字段</span>
+
+<span class="sd">    :param value: 要decode的值</span>
+<span class="sd">    :param encoding: 编码</span>
+<span class="sd">    :return: 结果</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">encoding</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="encode"><a class="viewcode-back" href="../toolkit.html#toolkit.encode">[docs]</a><span class="k">def</span> <span class="nf">encode</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">encoding</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    encode字段</span>
+
+<span class="sd">    :param value: 要encode的值</span>
+<span class="sd">    :param encoding: 编码</span>
+<span class="sd">    :return: 结果</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">encoding</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="rid"><a class="viewcode-back" href="../toolkit.html#toolkit.rid">[docs]</a><span class="k">def</span> <span class="nf">rid</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">AnyStr</span><span class="p">,</span>
+        <span class="n">old</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">AnyStr</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Pattern</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">AnyStr</span><span class="p">]],</span>
+        <span class="n">new</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">AnyStr</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">AnyStr</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    去掉匹配成功的字段</span>
+
+<span class="sd">    :param value: 要被处理的字符串</span>
+<span class="sd">    :param old: 被替换的内容，可以为正则表达示或字符串</span>
+<span class="sd">    :param new: 替换的字符串</span>
+<span class="sd">    :return: 结果</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">old</span><span class="p">,</span> <span class="s2">&quot;sub&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">old</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">new</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">old</span><span class="p">,</span> <span class="n">new</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="wrap_key"><a class="viewcode-back" href="../toolkit.html#toolkit.wrap_key">[docs]</a><span class="k">def</span> <span class="nf">wrap_key</span><span class="p">(</span><span class="n">json_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+             <span class="n">key_pattern</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Pattern</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;([a-zA-Z_]\w*)[\s]*:&quot;</span><span class="p">)</span>
+             <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    将javascript 对象字串串形式的key转换成被双字符包裹的格式如{a: 1} =&gt; {&quot;a&quot;: 1}</span>
+
+<span class="sd">    :param json_str: 要处理的json字符串</span>
+<span class="sd">    :param key_pattern: 用来处理的正则表达式</span>
+<span class="sd">    :return: 结果</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">key_pattern</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;&quot;\g&lt;1&gt;&quot;:&#39;</span><span class="p">,</span> <span class="n">json_str</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="safely_json_loads"><a class="viewcode-back" href="../toolkit.html#toolkit.safely_json_loads">[docs]</a><span class="k">def</span> <span class="nf">safely_json_loads</span><span class="p">(</span><span class="n">json_str</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">AnyStr</span><span class="p">,</span>
+                      <span class="n">defaulttype</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span>
+                      <span class="n">escape</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    返回安全的json类型</span>
+<span class="sd">    :param json_str: 要被loads的字符串</span>
+<span class="sd">    :param defaulttype: 若load失败希望得到的对象类型</span>
+<span class="sd">    :param escape: 是否将单引号变成双引号</span>
+<span class="sd">    :return: 结果</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">json_str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">defaulttype</span><span class="p">()</span>
+    <span class="k">elif</span> <span class="n">escape</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">replace_quote</span><span class="p">(</span><span class="n">json_str</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">json_str</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="chain_all"><a class="viewcode-back" href="../toolkit.html#toolkit.chain_all">[docs]</a><span class="k">def</span> <span class="nf">chain_all</span><span class="p">(</span><span class="nb">iter</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Iterable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Collection</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    连接多个序列或字典</span>
+
+<span class="sd">    :param iter: 字典或列表的列表</span>
+<span class="sd">    :return: 结果</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">iter</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">iter</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">iter</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">iter</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">iter</span><span class="p">:</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">+</span><span class="nb">list</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="nb">iter</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="replace_quote"><a class="viewcode-back" href="../toolkit.html#toolkit.replace_quote">[docs]</a><span class="k">def</span> <span class="nf">replace_quote</span><span class="p">(</span><span class="n">json_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    将要被json.loads的字符串的单引号转换成双引号，</span>
+<span class="sd">    如果该单引号是元素主体，而不是用来修饰字符串的。则不对其进行操作。</span>
+
+<span class="sd">    :param json_str: json字符串</span>
+<span class="sd">    :return: 结果</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">json_str</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">json_str</span>
+
+    <span class="n">double_quote</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">new_lst</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">json_str</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">val</span> <span class="o">==</span> <span class="s1">&#39;&quot;&#39;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">_get_last_backslash</span><span class="p">(</span><span class="n">json_str</span><span class="p">[:</span><span class="n">index</span><span class="p">]))</span> <span class="o">%</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">double_quote</span><span class="p">:</span>
+                <span class="n">double_quote</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">double_quote</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">val</span> <span class="o">==</span> <span class="s2">&quot;&#39;&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">_get_last_backslash</span><span class="p">(</span><span class="n">json_str</span><span class="p">[:</span><span class="n">index</span><span class="p">]))</span> <span class="o">%</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">double_quote</span><span class="p">:</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="s1">&#39;&quot;&#39;</span>
+        <span class="n">new_lst</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">new_lst</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">_get_last_backslash</span><span class="p">(</span><span class="n">strings</span><span class="p">,</span> <span class="n">regex</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">*$&quot;</span><span class="p">)):</span>
+    <span class="n">mth</span> <span class="o">=</span> <span class="n">regex</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">strings</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">mth</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">mth</span><span class="o">.</span><span class="n">group</span><span class="p">()</span>
+    <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="format_html_string"><a class="viewcode-back" href="../toolkit.html#toolkit.format_html_string">[docs]</a><span class="k">def</span> <span class="nf">format_html_string</span><span class="p">(</span><span class="n">html</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    格式化html, 去掉多余的字符，类，script等。这个函数性能可能会较差。</span>
+
+<span class="sd">    :param html: 传入的html字符串</span>
+<span class="sd">    :return: 处理完的html</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">trims</span> <span class="o">=</span> <span class="p">[(</span><span class="sa">r</span><span class="s1">&#39;\n&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">),</span>
+             <span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\t&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+             <span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\r&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+             <span class="p">(</span><span class="sa">r</span><span class="s1">&#39;  &#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+             <span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\u2018&#39;</span><span class="p">,</span> <span class="s2">&quot;&#39;&quot;</span><span class="p">),</span>
+             <span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\u2019&#39;</span><span class="p">,</span> <span class="s2">&quot;&#39;&quot;</span><span class="p">),</span>
+             <span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\ufeff&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+             <span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\u2022&#39;</span><span class="p">,</span> <span class="s2">&quot;:&quot;</span><span class="p">),</span>
+             <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;([a-z][a-z0-9]*)\ [^&gt;]*&gt;&quot;</span><span class="p">,</span> <span class="s1">&#39;&lt;\g&lt;1&gt;&gt;&#39;</span><span class="p">),</span>
+             <span class="p">(</span><span class="sa">r</span><span class="s1">&#39;&lt;\s*script[^&gt;]*&gt;[^&lt;]*&lt;\s*/\s*script\s*&gt;&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+             <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;/?a.*?&gt;&quot;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">string</span><span class="p">,</span> <span class="n">replacement</span><span class="p">:</span>
+                  <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">replacement</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">replacement</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">string</span><span class="p">),</span> <span class="n">trims</span><span class="p">,</span> <span class="n">html</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="urldecode"><a class="viewcode-back" href="../toolkit.html#toolkit.urldecode">[docs]</a><span class="k">def</span> <span class="nf">urldecode</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    与urlencode相反，不过没有unquote</span>
+
+<span class="sd">    :param query: url查询字符串</span>
+<span class="sd">    :return: 查询字符串的字典</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">query</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">query</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;&amp;&quot;</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="re_search"><a class="viewcode-back" href="../toolkit.html#toolkit.re_search">[docs]</a><span class="k">def</span> <span class="nf">re_search</span><span class="p">(</span><span class="n">regex</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Pattern</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">str</span><span class="p">],</span>
+              <span class="n">text</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">AnyStr</span><span class="p">,</span>
+              <span class="n">dotall</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="n">default</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    抽取正则规则的第一组元素</span>
+
+<span class="sd">    :param regex: 正则对象或字符串</span>
+<span class="sd">    :param text: 被查找的字符串</span>
+<span class="sd">    :param dotall: 正则.是否匹配所有字符</span>
+<span class="sd">    :param default: 找不到时的默认值</span>
+<span class="sd">    :return: 抽取正则规则的第一组</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">regex</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">regex</span> <span class="o">=</span> <span class="p">[</span><span class="n">regex</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">rex</span> <span class="ow">in</span> <span class="n">regex</span><span class="p">:</span>
+        <span class="n">rex</span> <span class="o">=</span> <span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">rex</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">DOTALL</span><span class="p">)</span>
+               <span class="k">if</span> <span class="n">dotall</span> <span class="k">else</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">rex</span><span class="p">))</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rex</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="n">rex</span>
+        <span class="n">match_obj</span> <span class="o">=</span> <span class="n">rex</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">match_obj</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">t</span> <span class="o">=</span> <span class="n">match_obj</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">t</span>
+    <span class="k">return</span> <span class="n">default</span></div>
+
+
+<div class="viewcode-block" id="P22P3Encoder"><a class="viewcode-back" href="../toolkit.html#toolkit.P22P3Encoder">[docs]</a><span class="k">class</span> <span class="nc">P22P3Encoder</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">JSONEncoder</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    python2转换python3时使用的json encoder</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="P22P3Encoder.default"><a class="viewcode-back" href="../toolkit.html#toolkit.P22P3Encoder.default">[docs]</a>    <span class="k">def</span> <span class="nf">default</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="n">types</span><span class="o">.</span><span class="n">GeneratorType</span><span class="p">,</span> <span class="nb">map</span><span class="p">,</span> <span class="nb">filter</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">JSONEncoder</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="retry_wrapper"><a class="viewcode-back" href="../toolkit.html#toolkit.retry_wrapper">[docs]</a><span class="k">def</span> <span class="nf">retry_wrapper</span><span class="p">(</span>
+        <span class="n">retry_times</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">exception</span><span class="p">:</span> <span class="nb">type</span><span class="o">=</span><span class="ne">Exception</span><span class="p">,</span>
+        <span class="n">error_handler</span><span class="p">:</span> <span class="n">types</span><span class="o">.</span><span class="n">FunctionType</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">interval</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    函数出错时用来重试的装饰器</span>
+
+<span class="sd">    :param retry_times: 重试次数</span>
+<span class="sd">    :param exception: 需要重试的异常</span>
+<span class="sd">    :param error_handler: 出错时的回调函数</span>
+<span class="sd">    :param interval: 重试间隔时间</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">out_wrapper</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+        <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="k">except</span> <span class="n">exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">if</span> <span class="n">error_handler</span><span class="p">:</span>
+                        <span class="n">result</span> <span class="o">=</span> <span class="n">error_handler</span><span class="p">(</span>
+                            <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">result</span><span class="p">:</span>
+                            <span class="n">count</span> <span class="o">-=</span> <span class="mi">1</span>
+                    <span class="k">if</span> <span class="n">count</span> <span class="o">&gt;=</span> <span class="n">retry_times</span><span class="p">:</span>
+                        <span class="k">raise</span>
+                    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">wrapper</span>
+    <span class="k">return</span> <span class="n">out_wrapper</span></div>
+
+
+<div class="viewcode-block" id="timeout"><a class="viewcode-back" href="../toolkit.html#toolkit.timeout">[docs]</a><span class="k">def</span> <span class="nf">timeout</span><span class="p">(</span><span class="n">timeout_time</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    装饰一个方法，用来限制其执行时间，超时后返回default，只能在主线程使用。</span>
+
+<span class="sd">    :param timeout_time: 超时时间</span>
+<span class="sd">    :param default: 超时后的返回</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">class</span> <span class="nc">DecoratorTimeout</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">timeout_function</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">f2</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+            <span class="k">def</span> <span class="nf">timeout_handler</span><span class="p">(</span><span class="n">signum</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">DecoratorTimeout</span><span class="p">()</span>
+
+            <span class="n">old_handler</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGALRM</span><span class="p">,</span> <span class="n">timeout_handler</span><span class="p">)</span>
+            <span class="n">signal</span><span class="o">.</span><span class="n">alarm</span><span class="p">(</span><span class="n">timeout_time</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">retval</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">DecoratorTimeout</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">default</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGALRM</span><span class="p">,</span> <span class="n">old_handler</span><span class="p">)</span>
+            <span class="n">signal</span><span class="o">.</span><span class="n">alarm</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">retval</span>
+        <span class="k">return</span> <span class="n">f2</span>
+    <span class="k">return</span> <span class="n">timeout_function</span></div>
+
+
+<div class="viewcode-block" id="custom_re"><a class="viewcode-back" href="../toolkit.html#toolkit.custom_re">[docs]</a><span class="k">def</span> <span class="nf">custom_re</span><span class="p">(</span><span class="n">regex</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Pattern</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">AnyStr</span><span class="p">],</span> <span class="n">text</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">AnyStr</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    模仿selector.re</span>
+
+<span class="sd">    :param regex: 正则表达式对象</span>
+<span class="sd">    :param text: 被查询的字符串</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">regex</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="replace_dot"><a class="viewcode-back" href="../toolkit.html#toolkit.replace_dot">[docs]</a><span class="k">def</span> <span class="nf">replace_dot</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    mongodb不支持key中带有&quot;.&quot;，该函数用来将&quot;.&quot;转换成&quot;_&quot;</span>
+
+<span class="sd">    :param data: 要处理的字典</span>
+<span class="sd">    :return: 返回的字典</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">dict</span><span class="p">((</span><span class="n">k</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">),</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="groupby"><a class="viewcode-back" href="../toolkit.html#toolkit.groupby">[docs]</a><span class="k">def</span> <span class="nf">groupby</span><span class="p">(</span><span class="n">it</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Iterable</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="n">types</span><span class="o">.</span><span class="n">FunctionType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    自实现groupby，itertool的groupby不能合并不连续但是相同的组, 且返回值是iter</span>
+
+<span class="sd">    :param it: 一个列表套字典的结构</span>
+<span class="sd">    :param key: 从字典从取值的函数，作为group_by后的key</span>
+<span class="sd">    :return: 字典对象</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">groups</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">it</span><span class="p">:</span>
+        <span class="n">groups</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">key</span><span class="p">(</span><span class="n">item</span><span class="p">),</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">groups</span></div>
+
+
+<div class="viewcode-block" id="parse_cookie"><a class="viewcode-back" href="../toolkit.html#toolkit.parse_cookie">[docs]</a><span class="k">def</span> <span class="nf">parse_cookie</span><span class="p">(</span><span class="n">string</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">regex</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Pattern</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;([^=]+)=([^\;]+);?\s?&#39;</span><span class="p">)</span>
+                 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    解析cookie</span>
+
+<span class="sd">    :param string: cookie字符串</span>
+<span class="sd">    :param regex: 解析cookie的正则表达式</span>
+<span class="sd">    :return: cookie字典</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">dict</span><span class="p">((</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">regex</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">string</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="async_produce_wrapper"><a class="viewcode-back" href="../toolkit.html#toolkit.async_produce_wrapper">[docs]</a><span class="k">def</span> <span class="nf">async_produce_wrapper</span><span class="p">(</span><span class="n">producer</span><span class="p">,</span> <span class="n">logger</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    pykafka实现异步生产时，使用的装饰器</span>
+<span class="sd">    `</span>
+<span class="sd">    self.producer.produce =</span>
+<span class="sd">    async_produce_wrapper(self.producer, self.logger)(self.producer.produce)</span>
+<span class="sd">    `</span>
+<span class="sd">    :param producer:</span>
+<span class="sd">    :param logger:</span>
+<span class="sd">    :param batch_size:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+
+        <span class="k">def</span> <span class="nf">inner</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">nonlocal</span> <span class="n">count</span>
+            <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">count</span> <span class="o">%</span> <span class="n">batch_size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># adjust this or bring lots of RAM ;)</span>
+                <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">msg</span><span class="p">,</span> <span class="n">exc</span> <span class="o">=</span> <span class="n">producer</span><span class="o">.</span><span class="n">get_delivery_report</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">exc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Failed to deliver msg </span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                <span class="n">msg</span><span class="o">.</span><span class="n">partition_key</span><span class="p">,</span> <span class="nb">repr</span><span class="p">(</span><span class="n">exc</span><span class="p">)))</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Successfully delivered msg </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                <span class="n">msg</span><span class="o">.</span><span class="n">partition_key</span><span class="p">))</span>
+                    <span class="k">except</span> <span class="n">Empty</span><span class="p">:</span>
+                        <span class="k">break</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="k">return</span> <span class="n">inner</span>
+    <span class="k">return</span> <span class="n">wrapper</span></div>
+
+
+<div class="viewcode-block" id="load_function"><a class="viewcode-back" href="../toolkit.html#toolkit.load_function">[docs]</a><span class="k">def</span> <span class="nf">load_function</span><span class="p">(</span><span class="n">function_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">types</span><span class="o">.</span><span class="n">FunctionType</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    返回字符串表示的函数对象</span>
+
+<span class="sd">    :param function_str: 函数描述字符串，如：module1.module2.function</span>
+<span class="sd">    :return: function: 找到的函数</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;load_function() is a deprecated alias since 1.7.19, &quot;</span>
+                  <span class="s2">&quot;use load() instead.&quot;</span><span class="p">,</span>
+                  <span class="ne">DeprecationWarning</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">mod_str</span><span class="p">,</span> <span class="n">_sep</span><span class="p">,</span> <span class="n">function_str</span> <span class="o">=</span> <span class="n">function_str</span><span class="o">.</span><span class="n">rpartition</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">mod_str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">load_module</span><span class="p">(</span><span class="n">mod_str</span><span class="p">),</span> <span class="n">function_str</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># 可能整体是一个模块</span>
+        <span class="k">return</span> <span class="n">load_module</span><span class="p">(</span><span class="n">function_str</span><span class="p">)</span></div>
+    
+
+<span class="n">load_class</span> <span class="o">=</span> <span class="n">load_function</span>
+
+
+<div class="viewcode-block" id="load_module"><a class="viewcode-back" href="../toolkit.html#toolkit.load_module">[docs]</a><span class="k">def</span> <span class="nf">load_module</span><span class="p">(</span><span class="n">module_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">types</span><span class="o">.</span><span class="n">ModuleType</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    返回字符串表示的模块</span>
+
+<span class="sd">    :param module_str: 模块描述字符串，如: os.path</span>
+<span class="sd">    :return: 模块，如: os.path</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;load_function() is a deprecated alias since 1.7.19, &quot;</span>
+                  <span class="s2">&quot;use load() instead.&quot;</span><span class="p">,</span>
+                  <span class="ne">DeprecationWarning</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">__import__</span><span class="p">(</span><span class="n">module_str</span><span class="p">,</span> <span class="n">fromlist</span><span class="o">=</span><span class="n">module_str</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="load"><a class="viewcode-back" href="../toolkit.html#toolkit.load">[docs]</a><span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">prop_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    返回字符串表示的模块、函数、类、若类的属性等</span>
+
+<span class="sd">    :param prop_str: 函数、类、类属性、模块描述字符串，如: module1.class.function....</span>
+<span class="sd">    :return: 函数、类、模块等。</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">attr_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># 每次循环将prop_str当模块路径查找，成功则返回，</span>
+    <span class="c1"># 失败则将模块路径回退一级，将回退的部分转换成属性</span>
+    <span class="c1"># 至到加载模块成功后依次从模块中提取属性。</span>
+    <span class="n">ex</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">while</span> <span class="n">prop_str</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">obj</span> <span class="o">=</span> <span class="nb">__import__</span><span class="p">(</span><span class="n">prop_str</span><span class="p">,</span> <span class="n">fromlist</span><span class="o">=</span><span class="n">prop_str</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">attr_list</span><span class="p">:</span>
+                <span class="n">obj</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">obj</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">ImportError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">prop_str</span><span class="p">,</span> <span class="n">_sep</span><span class="p">,</span> <span class="n">attr_str</span> <span class="o">=</span> <span class="n">prop_str</span><span class="o">.</span><span class="n">rpartition</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+            <span class="n">attr_list</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">attr_str</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">raise_from</span><span class="p">(</span><span class="ne">ImportError</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="n">e</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">ex</span> <span class="o">=</span> <span class="n">e</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">ex</span></div>
+
+
+<div class="viewcode-block" id="free_port"><a class="viewcode-back" href="../toolkit.html#toolkit.free_port">[docs]</a><span class="k">def</span> <span class="nf">free_port</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    找到一个可用端口</span>
+
+<span class="sd">    :return 端口号</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">free_socket</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+    <span class="n">free_socket</span><span class="o">.</span><span class="n">bind</span><span class="p">((</span><span class="s1">&#39;0.0.0.0&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="n">free_socket</span><span class="o">.</span><span class="n">listen</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+    <span class="n">port</span> <span class="o">=</span> <span class="n">free_socket</span><span class="o">.</span><span class="n">getsockname</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">free_socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">port</span></div>
+
+
+<div class="viewcode-block" id="thread_safe"><a class="viewcode-back" href="../toolkit.html#toolkit.thread_safe">[docs]</a><span class="k">def</span> <span class="nf">thread_safe</span><span class="p">(</span><span class="n">lock</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    对指定函数进行线程安全包装，需要提供锁</span>
+
+<span class="sd">    :param lock: 锁</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">decorate</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+        <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">with</span> <span class="n">lock</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">wrapper</span>
+    <span class="k">return</span> <span class="n">decorate</span></div>
+
+
+<div class="viewcode-block" id="thread_safe_for_method"><a class="viewcode-back" href="../toolkit.html#toolkit.thread_safe_for_method">[docs]</a><span class="k">def</span> <span class="nf">thread_safe_for_method</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    对类中的方法进行线程安全包装</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">lock</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">wrapper</span></div>
+
+
+<div class="viewcode-block" id="call_later"><a class="viewcode-back" href="../toolkit.html#toolkit.call_later">[docs]</a><span class="k">def</span> <span class="nf">call_later</span><span class="p">(</span><span class="n">callback</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+               <span class="n">call_args</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Tuple</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(),</span>
+               <span class="n">immediately</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+               <span class="n">interval</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    应用场景：</span>
+<span class="sd">    被装饰的方法需要大量调用，随后需要调用保存方法，</span>
+<span class="sd">    但是因为被装饰的方法访问量很高，而保存方法开销很大</span>
+<span class="sd">    所以设计在装饰方法持续调用一定间隔后，再调用保存方法。</span>
+<span class="sd">    规定间隔内，无论调用多少次被装饰方法，保存方法只会</span>
+<span class="sd">    调用一次，除非immediately=True</span>
+
+<span class="sd">    :param callback: 随后需要调用的方法名</span>
+<span class="sd">    :param call_args: 随后需要调用的方法所需要的参数</span>
+<span class="sd">    :param immediately: 是否立即调用</span>
+<span class="sd">    :param interval: 调用间隔</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">decorate</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+        <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="bp">self</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">immediately</span><span class="p">:</span>
+                    <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">)(</span><span class="o">*</span><span class="n">call_args</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;last_call_time&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">interval</span><span class="p">:</span>
+                        <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">)(</span><span class="o">*</span><span class="n">call_args</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="s2">&quot;last_call_time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">now</span>
+        <span class="k">return</span> <span class="n">wrapper</span>
+    <span class="k">return</span> <span class="n">decorate</span></div>
+
+
+<div class="viewcode-block" id="get_ip"><a class="viewcode-back" href="../toolkit.html#toolkit.get_ip">[docs]</a><span class="k">def</span> <span class="nf">get_ip</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    获取局域网ip</span>
+
+<span class="sd">    :return: 局域网ip</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">psutil</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;get_ip function depends on psutil, try: pip install psutil. &quot;</span><span class="p">)</span>
+        <span class="k">raise</span>
+    <span class="n">netcard_info</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">info</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">net_if_addrs</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">info</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">v</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;127.0.0.1&#39;</span><span class="p">:</span>
+                <span class="n">netcard_info</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">k</span><span class="p">,</span><span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+
+    <span class="k">if</span> <span class="n">netcard_info</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">netcard_info</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span></div>
+
+
+<span class="k">def</span> <span class="nf">_find_caller_name</span><span class="p">(</span><span class="n">is_func</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">steps</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">frame</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">currentframe</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">steps</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">co</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_code</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_back</span>
+
+    <span class="k">if</span> <span class="n">is_func</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">co</span><span class="o">.</span><span class="n">co_name</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">co</span><span class="o">.</span><span class="n">co_filename</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">filename</span> <span class="o">==</span> <span class="s2">&quot;__init__&quot;</span><span class="p">:</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">co</span><span class="o">.</span><span class="n">co_filename</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">filename</span>
+
+<span class="c1">#</span>
+<span class="c1"># class LazyDict(object):</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     懒加载dict, 提供一个转换函数，只有在获取dict中的值时，才对指定值进行turn函数的调用</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     def __init__(self, d, turn):</span>
+<span class="c1">#         self.dict = d</span>
+<span class="c1">#         self.turn = turn</span>
+<span class="c1">#</span>
+<span class="c1">#     def get(self, item):</span>
+<span class="c1">#         return self.dict.setdefault(item, self.turn(item, self.dict))</span>
+<span class="c1">#</span>
+<span class="c1">#     def __getitem__(self, item):</span>
+<span class="c1">#         return self.get(item)</span>
+<span class="c1">#</span>
+<span class="c1">#     def to_dict(self):</span>
+<span class="c1">#         return self.dict</span>
+
+
+<div class="viewcode-block" id="cache_property"><a class="viewcode-back" href="../toolkit.html#toolkit.cache_property">[docs]</a><span class="k">def</span> <span class="nf">cache_property</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    缓存属性，只计算一次</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">property</span><span class="p">(</span><span class="n">_property_cache</span><span class="p">(</span><span class="n">func</span><span class="p">))</span></div>
+
+
+<span class="k">def</span> <span class="nf">_property_cache</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">:</span>
+            <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">wrapper</span>
+
+
+<div class="viewcode-block" id="cache_prop"><a class="viewcode-back" href="../toolkit.html#toolkit.cache_prop">[docs]</a><span class="k">class</span> <span class="nc">cache_prop</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    描述符版缓存属性，无法被覆盖</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func</span> <span class="o">=</span> <span class="n">func</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span> <span class="ow">in</span> <span class="n">instance</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">instance</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">instance</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="n">instance</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> is readonly.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="cache_for"><a class="viewcode-back" href="../toolkit.html#toolkit.cache_for">[docs]</a><span class="k">def</span> <span class="nf">cache_for</span><span class="p">(</span><span class="n">timeout</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    缓存属性，指定缓存失效时间</span>
+
+<span class="sd">    :param timeout: 缓存失效时间 second</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">outer</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+        <span class="nd">@property</span>
+        <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">inner</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">prop_name</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span>
+            <span class="n">prop_start_name</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_cache_start_time&quot;</span> <span class="o">%</span> <span class="n">prop_name</span>
+            <span class="k">if</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">prop_start_name</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">timeout</span><span class="p">:</span>
+                <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">prop_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_cache_start_time&quot;</span> <span class="o">%</span> <span class="n">prop_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">prop_name</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">inner</span>
+    <span class="k">return</span> <span class="n">outer</span></div>
+
+
+<div class="viewcode-block" id="free_namedtuple"><a class="viewcode-back" href="../toolkit.html#toolkit.free_namedtuple">[docs]</a><span class="k">def</span> <span class="nf">free_namedtuple</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    根据一个类及其参数创建一个类namedtuple class，</span>
+<span class="sd">    但不同之处在于创建实例成功后可以自由赋值，初时化时指定的值决定其Hash和eq结果</span>
+
+<span class="sd">    :param func:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cls_tmpl</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">class </span><span class="si">{}</span><span class="s2">(object):</span>
+<span class="s2">    def __init__(self, </span><span class="si">{}</span><span class="s2">):</span>
+<span class="s2">        </span><span class="si">{}</span><span class="s2"></span>
+<span class="s2">    def __hash__(self):</span>
+<span class="s2">        return </span><span class="si">{}</span><span class="s2"></span>
+
+<span class="s2">    def __eq__(self, other):</span>
+<span class="s2">        if not isinstance(other, self.__class__):</span>
+<span class="s2">            return False</span>
+<span class="s2">        return </span><span class="si">{}</span><span class="s2"></span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getargspec</span><span class="p">(</span><span class="n">func</span><span class="p">)</span><span class="o">.</span><span class="n">args</span>
+    <span class="k">if</span> <span class="n">args</span> <span class="ow">and</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;self&quot;</span><span class="p">,</span> <span class="s2">&quot;cls&quot;</span><span class="p">]:</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">class_name</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span>
+    <span class="n">init_arg</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">args</span> <span class="o">+</span> <span class="s2">&quot;=None&quot;</span> <span class="k">for</span> <span class="n">args</span> <span class="ow">in</span> <span class="n">args</span><span class="p">)</span> <span class="k">if</span> <span class="n">args</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">init_body</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+        <span class="s2">&quot;self.{</span><span class="si">%s</span><span class="s2">} = {</span><span class="si">%s</span><span class="s2">}</span><span class="se">\n</span><span class="s2">        &quot;</span> <span class="o">%</span> <span class="p">(</span>
+            <span class="n">index</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span> <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)))</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span> <span class="k">if</span> <span class="n">args</span> <span class="k">else</span> <span class="s2">&quot;pass&quot;</span>
+    <span class="n">hash_body</span> <span class="o">=</span> <span class="s2">&quot; + &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;hash(self.</span><span class="si">{}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">args</span><span class="p">)</span> <span class="k">if</span> <span class="n">args</span> <span class="k">else</span> <span class="s2">&quot;0&quot;</span>
+    <span class="n">eq_body</span> <span class="o">=</span> <span class="s2">&quot; and &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;self.</span><span class="si">{0}</span><span class="s2"> == other.</span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">args</span><span class="p">)</span> <span class="k">if</span> <span class="n">args</span> <span class="k">else</span> <span class="s2">&quot;True&quot;</span>
+    <span class="n">namespace</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="vm">__name__</span><span class="o">=</span><span class="s1">&#39;entries_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">class_name</span><span class="p">)</span>
+    <span class="n">class_str</span> <span class="o">=</span> <span class="n">cls_tmpl</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">class_name</span><span class="p">,</span> <span class="n">init_arg</span><span class="p">,</span> <span class="n">init_body</span><span class="p">,</span> <span class="n">hash_body</span><span class="p">,</span> <span class="n">eq_body</span><span class="p">)</span>
+    <span class="n">exec</span><span class="p">(</span><span class="n">class_str</span><span class="p">,</span> <span class="n">namespace</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">namespace</span><span class="p">[</span><span class="n">class_name</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="cache_method"><a class="viewcode-back" href="../toolkit.html#toolkit.cache_method">[docs]</a><span class="k">def</span> <span class="nf">cache_method</span><span class="p">(</span><span class="n">timeout</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    缓存一个方法的调用结果，持续一定时长，</span>
+<span class="sd">    根据不同的调用参数来缓存不同的结果，调用参数必须是可hash的，</span>
+<span class="sd">    该方法调用正常时，希望返回真值(形式上为真)，若返回值为假，缓存效果会失效。</span>
+
+<span class="sd">    :param timeout: 缓存时长 :s</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">cache</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+        <span class="n">entry_class</span> <span class="o">=</span> <span class="n">free_namedtuple</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+        <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">inner</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">timeout</span> <span class="o">&gt;</span> <span class="n">data</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">ts</span><span class="p">:</span>
+                    <span class="k">del</span> <span class="n">data</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+
+            <span class="n">entry</span> <span class="o">=</span> <span class="n">entry_class</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="n">entry</span><span class="o">.</span><span class="n">ts</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">stored</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">entry</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">entry</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span> <span class="ow">or</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">timeout</span> <span class="o">&gt;</span> <span class="n">stored</span><span class="o">.</span><span class="n">ts</span><span class="p">:</span>
+                <span class="n">entry</span><span class="o">.</span><span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">result</span><span class="p">:</span>
+                    <span class="n">data</span><span class="p">[</span><span class="n">entry</span><span class="p">]</span> <span class="o">=</span> <span class="n">entry</span>
+                <span class="k">return</span> <span class="n">entry</span><span class="o">.</span><span class="n">result</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">stored</span><span class="o">.</span><span class="n">result</span>
+        <span class="k">return</span> <span class="n">inner</span>
+    <span class="k">return</span> <span class="n">cache</span></div>
+
+
+<div class="viewcode-block" id="cache_method_for_updated"><a class="viewcode-back" href="../toolkit.html#toolkit.cache_method_for_updated">[docs]</a><span class="k">def</span> <span class="nf">cache_method_for_updated</span><span class="p">(</span><span class="n">func</span><span class="p">:</span> <span class="n">types</span><span class="o">.</span><span class="n">FunctionType</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    缓存方法调用结果直到实例的updated返回True，与cache_method类似。</span>
+
+<span class="sd">    @param func: 要缓存的方法</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">entry_class</span> <span class="o">=</span> <span class="n">free_namedtuple</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+    <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">inner</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="c1"># 没有更新方法(直接使用子类，而不通过cache)，不进行缓存操作</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">updated</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="c1"># 如果已更新，则清除所有缓存</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">updated</span><span class="p">():</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="n">entry_class</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">stored</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">entry</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">entry</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">entry</span><span class="o">.</span><span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">result</span><span class="p">:</span>
+                <span class="n">data</span><span class="p">[</span><span class="n">entry</span><span class="p">]</span> <span class="o">=</span> <span class="n">entry</span>
+            <span class="k">return</span> <span class="n">entry</span><span class="o">.</span><span class="n">result</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">stored</span><span class="o">.</span><span class="n">result</span>
+
+    <span class="k">return</span> <span class="n">inner</span></div>
+
+<span class="c1">#</span>
+<span class="c1"># class SafeValue(object):</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     获取某个对象的某个属性值，如果该属性不存在，则返回该对象</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     def __init__(self, node):</span>
+<span class="c1">#         self.node = node</span>
+<span class="c1">#</span>
+<span class="c1">#     def __getattr__(self, item):</span>
+<span class="c1">#         return getattr(self.node, item, self.node)</span>
+
+
+<div class="viewcode-block" id="overflow"><a class="viewcode-back" href="../toolkit.html#toolkit.overflow">[docs]</a><span class="k">def</span> <span class="nf">overflow</span><span class="p">(</span><span class="n">val</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">btc</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    对于超出字节长度的数字转换成负数</span>
+
+<span class="sd">    :param val: 值</span>
+<span class="sd">    :param btc: 字节长度</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">max_val</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">**</span> <span class="p">(</span><span class="mi">8</span><span class="o">*</span><span class="n">btc</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="o">-</span><span class="n">max_val</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">val</span> <span class="o">&lt;=</span> <span class="n">max_val</span><span class="p">:</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="p">(</span><span class="n">val</span> <span class="o">+</span> <span class="p">(</span><span class="n">max_val</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span> <span class="o">%</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">max_val</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span> <span class="o">-</span> <span class="n">max_val</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">val</span></div>
+
+
+<div class="viewcode-block" id="int_overflow"><a class="viewcode-back" href="../toolkit.html#toolkit.int_overflow">[docs]</a><span class="k">def</span> <span class="nf">int_overflow</span><span class="p">(</span><span class="n">val</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    类似js对于超过int范围的数转换成负数</span>
+<span class="sd">    :param val: 值</span>
+<span class="sd">    :return: 结果</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">overflow</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="unsigned_right_shift"><a class="viewcode-back" href="../toolkit.html#toolkit.unsigned_right_shift">[docs]</a><span class="k">def</span> <span class="nf">unsigned_right_shift</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">i</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    无符号右移python实现</span>
+
+<span class="sd">    :param n: 值</span>
+<span class="sd">    :param i: 移的位数</span>
+<span class="sd">    :return: 结果</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># 数字小于0，则转为32位无符号uint</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_uint32</span><span class="p">(</span><span class="n">n</span><span class="p">)</span><span class="o">.</span><span class="n">value</span>
+    <span class="c1"># 正常位移位数是为正数，但是为了兼容js之类的，负数就右移变成左移好了</span>
+    <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">int_overflow</span><span class="p">(</span><span class="n">n</span> <span class="o">&lt;&lt;</span> <span class="nb">abs</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">int_overflow</span><span class="p">(</span><span class="n">n</span> <span class="o">&gt;&gt;</span> <span class="n">i</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="shift_left_for_js"><a class="viewcode-back" href="../toolkit.html#toolkit.shift_left_for_js">[docs]</a><span class="k">def</span> <span class="nf">shift_left_for_js</span><span class="p">(</span><span class="n">num</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">count</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    位运算左移js版</span>
+
+<span class="sd">    :param num: 值</span>
+<span class="sd">    :param count: 移的位数</span>
+<span class="sd">    :return: 结果</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">int_overflow</span><span class="p">(</span><span class="n">num</span> <span class="o">&lt;&lt;</span> <span class="n">count</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="shift_right_for_js"><a class="viewcode-back" href="../toolkit.html#toolkit.shift_right_for_js">[docs]</a><span class="k">def</span> <span class="nf">shift_right_for_js</span><span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">count</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    位运算右移js版</span>
+
+<span class="sd">    :param num: 值</span>
+<span class="sd">    :param count: 移的位数</span>
+<span class="sd">    :return: 结果</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">int_overflow</span><span class="p">(</span><span class="n">num</span> <span class="o">&gt;&gt;</span> <span class="n">count</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="readexactly"><a class="viewcode-back" href="../toolkit.html#toolkit.readexactly">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">readexactly</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    asyncio stream read</span>
+
+<span class="sd">    :param stream: 流</span>
+<span class="sd">    :param n: 读取字节的长度</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="s2">&quot;_exception&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">stream</span><span class="o">.</span><span class="n">_exception</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">stream</span><span class="o">.</span><span class="n">_exception</span>
+
+    <span class="n">blocks</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">while</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">block</span> <span class="o">=</span> <span class="k">await</span> <span class="n">stream</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">block</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="n">blocks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">block</span><span class="p">)</span>
+        <span class="n">n</span> <span class="o">-=</span> <span class="nb">len</span><span class="p">(</span><span class="n">block</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="sa">b</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">blocks</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NotImplementedProp"><a class="viewcode-back" href="../toolkit.html#toolkit.NotImplementedProp">[docs]</a><span class="k">class</span> <span class="nc">NotImplementedProp</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    用来对子类需要实现的类属性进行占位</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">NotImplemented</span></div>
+
+
+<div class="viewcode-block" id="classproperty"><a class="viewcode-back" href="../toolkit.html#toolkit.classproperty">[docs]</a><span class="k">class</span> <span class="nc">classproperty</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    property只能用于实例方法到实例属性的转换，使用classproperty来支持类方法到类属性的转换</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func</span> <span class="o">=</span> <span class="n">func</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="n">owner</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="cache_classproperty"><a class="viewcode-back" href="../toolkit.html#toolkit.cache_classproperty">[docs]</a><span class="k">def</span> <span class="nf">cache_classproperty</span><span class="p">(</span><span class="n">func</span><span class="p">:</span> <span class="n">types</span><span class="o">.</span><span class="n">FunctionType</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    缓存类属性，只计算一次</span>
+
+<span class="sd">    :param func: 函数</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nd">@classproperty</span>
+    <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">prop_name</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="k">if</span> <span class="n">prop_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">:</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">prop_name</span><span class="p">,</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">prop_name</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">wrapper</span></div>
+
+
+<div class="viewcode-block" id="_assert"><a class="viewcode-back" href="../toolkit.html#toolkit._assert">[docs]</a><span class="k">def</span> <span class="nf">_assert</span><span class="p">(</span><span class="n">boolean</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    增强版assert，如果data是异常对象则直接抛出。</span>
+
+<span class="sd">    :param boolean: True/False</span>
+<span class="sd">    :param data: 异常或者描述信息</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">boolean</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">data</span>
+        <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">a</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">v</span>
+    <span class="k">def</span> <span class="nf">b</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">v</span>
+    <span class="k">def</span> <span class="nf">c</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mi">2</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">Compose</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="n">c</span><span class="p">)())</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, cnaafhvk.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

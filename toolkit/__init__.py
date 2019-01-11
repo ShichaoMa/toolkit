@@ -9,32 +9,37 @@ import types
 import ctypes
 import socket
 import signal
+import typing
+import numbers
 import inspect
 import logging
 import warnings
 
 from queue import Empty
 from future.utils import raise_from
-from functools import wraps, reduce, partial
+from functools import wraps, reduce
 
 __version__ = '1.7.25'
 
 
-_ITERABLE_SINGLE_VALUES = dict, str, bytes
-
-
-def test_prepare(search_paths=[".."]):
+def test_prepare(search_paths :typing.List[str]=None):
     """
-    单元测试时，动态添加模块搜索路径。
-    :param search_paths:
-    :return:
+    单元测试时，动态添加PYTHONPATH。
+
+    :param search_paths: 要将哪个路径加入PYTHONPATH
     """
+    if not search_paths:
+        search_paths = [".."]
+
     for search_path in search_paths:
         sys.path.insert(0, os.path.abspath(search_path))
     del sys.modules["toolkit"]
 
 
 def debugger():
+    """
+    pdb的简单封装，在debug=False的情况下，不会打断点
+    """
     try:
         debug = bool(eval(os.environ.get("DEBUG", "0").lower().capitalize()))
     except Exception:
@@ -45,14 +50,16 @@ def debugger():
         d.set_trace( sys._getframe().f_back)
 
 
-def arg_to_iter(arg):
+def arg_to_iter(arg: typing.Any) -> typing.List[typing.Any]:
     """
     将非可迭代对象转换成可迭代对象
+
+    :param arg: 任意对象
+    :return: 列表对象
     """
     if arg is None:
         return []
-    elif not isinstance(arg, _ITERABLE_SINGLE_VALUES) \
-            and hasattr(arg, '__iter__'):
+    elif not isinstance(arg, (dict, str, bytes)) and hasattr(arg, '__iter__'):
         return arg
     else:
         return [arg]
@@ -60,17 +67,35 @@ def arg_to_iter(arg):
 
 class Compose(object):
     """
-    连接多个函数
-    如果is_pipe=True，那么将第一个函数的结果做为第二个函数的参数
-    否则，返回所有函数结果集列表将传aggregation中进行聚合
+    函数聚合器
     """
-    def __init__(self, *functions, is_pipe=False,
-                 aggregation=partial(reduce, lambda x, y: x and y)):
+    def __init__(self, *functions: typing.Tuple[types.FunctionType],
+                 is_pipe: bool=False, aggregation: types.FunctionType=None):
+        """
+        连续调用多个函数, 如果is_pipe=True，依次连接所有函数的输出到输入。
+        否则，返回所有函数结果集列表将传aggregation中进行聚合。
+
+        :param functions: 需要连接的函数
+        :param is_pipe: 是否建立管道
+        :param aggregation: 聚合函数
+        """
         self.functions = functions
         self.is_pipe = is_pipe
-        self.aggregation = aggregation
+        if aggregation:
+            self.aggregation = aggregation
 
-    def __call__(self, *args, **kwargs):
+    @staticmethod
+    def aggregation(iterable: typing.Iterable) -> bool:
+        """
+        对所有运算结果进行逻辑与
+
+        :param iterable: 所有运算结果集合
+        :return: 运算结果True/False
+        """
+        return reduce(lambda x, y: x and y, iterable)
+
+    def __call__(self, *args: typing.Tuple[typing.Any],
+                 **kwargs: typing.Dict[typing.AnyStr, typing.AnyStr]):
         result_set = []
         for index, func in enumerate(self.functions):
             if not index or not self.is_pipe:
@@ -78,13 +103,17 @@ class Compose(object):
             else:
                 result_set[0] = func(result_set[0])
         return self.aggregation(
-            result_set or [0, 0]) if len(result_set) !=1 else result_set[0]
+            result_set or [0, 0]) if len(result_set) != 1 else result_set[0]
 
 
-def duplicate(iterable, keep=lambda x: x, key=lambda x: x, reverse=False):
+def duplicate(iterable: typing.Iterable,
+              keep: types.FunctionType=lambda x: x,
+              key:types.FunctionType=lambda x: x,
+              reverse: bool=False) -> list:
     """
     保序去重
-    :param iterable:
+
+    :param iterable: 需要去重的列表
     :param keep: 去重的同时要对element做的操作
     :param key: 使用哪一部分去重
     :param reverse: 是否反向去重
@@ -94,6 +123,7 @@ def duplicate(iterable, keep=lambda x: x, key=lambda x: x, reverse=False):
     duplicator = list()
     if reverse:
         iterable = reversed(iterable)
+
     for i in iterable:
         keep_field = keep(i)
         key_words = key(i)
@@ -103,45 +133,51 @@ def duplicate(iterable, keep=lambda x: x, key=lambda x: x, reverse=False):
     return list(reversed(result)) if reverse else result
 
 
-def strip(value, chars=None):
+def strip(value, chars: typing.AnyStr=None):
     """
-    strip字段
-    :param value:
-    :param chars:
-    :return:
+    安全strip，如果不是字符串类型，直接返回。
+
+    :param value: 要strip的值
+    :param chars: 需要去掉的字符
+    :return: 结果
     """
-    if isinstance(value, str):
+    if isinstance(value, (bytes, str)):
         return value.strip(chars)
     return value
 
 
-def decode(value, encoding="utf-8"):
+def decode(value, encoding: str="utf-8"):
     """
     decode字段
-    :param value:
-    :param encoding:
-    :return:
+
+    :param value: 要decode的值
+    :param encoding: 编码
+    :return: 结果
     """
     return value.decode(encoding)
 
 
-def encode(value, encoding="utf-8"):
+def encode(value, encoding: str="utf-8"):
     """
     encode字段
-    :param value:
-    :param encoding:
-    :return:
+
+    :param value: 要encode的值
+    :param encoding: 编码
+    :return: 结果
     """
     return value.encode(encoding)
 
 
-def rid(value, old, new):
+def rid(value: typing.AnyStr,
+        old: typing.Union[typing.AnyStr, typing.Pattern[typing.AnyStr]],
+        new: typing.AnyStr) -> typing.AnyStr:
     """
     去掉匹配成功的字段
-    :param value:
-    :param old: 可以为正则表达示或字符串
-    :param new:
-    :return:
+
+    :param value: 要被处理的字符串
+    :param old: 被替换的内容，可以为正则表达示或字符串
+    :param new: 替换的字符串
+    :return: 结果
     """
     if hasattr(old, "sub"):
         return old.sub(new, value)
@@ -149,23 +185,28 @@ def rid(value, old, new):
         return value.replace(old, new)
 
 
-def wrap_key(json_str, key_pattern=re.compile(r"([a-zA-Z_]\w*)[\s]*\:")):
+def wrap_key(json_str: str,
+             key_pattern: typing.Pattern[str]=re.compile(r"([a-zA-Z_]\w*)[\s]*:")
+             ) -> str:
     """
     将javascript 对象字串串形式的key转换成被双字符包裹的格式如{a: 1} => {"a": 1}
-    :param json_str:
-    :param key_pattern:
-    :return:
+
+    :param json_str: 要处理的json字符串
+    :param key_pattern: 用来处理的正则表达式
+    :return: 结果
     """
     return key_pattern.sub('"\g<1>":', json_str)
 
 
-def safely_json_loads(json_str, defaulttype=dict, escape=True):
+def safely_json_loads(json_str: typing.AnyStr,
+                      defaulttype: typing.Any=dict,
+                      escape: bool=True):
     """
     返回安全的json类型
     :param json_str: 要被loads的字符串
     :param defaulttype: 若load失败希望得到的对象类型
     :param escape: 是否将单引号变成双引号
-    :return:
+    :return: 结果
     """
     if not json_str:
         return defaulttype()
@@ -176,15 +217,18 @@ def safely_json_loads(json_str, defaulttype=dict, escape=True):
         return json.loads(json_str)
 
 
-def chain_all(iter):
+def chain_all(iter: typing.Iterable) -> typing.Union[typing.Collection]:
     """
     连接多个序列或字典
-    :param iter:
-    :return:
+
+    :param iter: 字典或列表的列表
+    :return: 结果
     """
     iter = list(iter)
+
     if not iter:
         return []
+
     if isinstance(iter[0], dict):
         result = {}
         for i in iter:
@@ -194,24 +238,27 @@ def chain_all(iter):
     return result
 
 
-def replace_quote(json_str):
+def replace_quote(json_str: str) -> str:
     """
     将要被json.loads的字符串的单引号转换成双引号，
     如果该单引号是元素主体，而不是用来修饰字符串的。则不对其进行操作。
-    :param json_str:
-    :return:
+
+    :param json_str: json字符串
+    :return: 结果
     """
     if not isinstance(json_str, str):
         return json_str
 
     double_quote = []
     new_lst = []
+
     for index, val in enumerate(json_str):
         if val == '"' and not len(_get_last_backslash(json_str[:index])) % 2:
             if double_quote:
                 double_quote.pop(0)
             else:
                 double_quote.append(val)
+
         if val == "'" and not len(_get_last_backslash(json_str[:index])) % 2:
             if not double_quote:
                 val = '"'
@@ -226,11 +273,12 @@ def _get_last_backslash(strings, regex=re.compile(r"\\*$")):
     return ""
 
 
-def format_html_string(html):
+def format_html_string(html: str) -> str:
     """
-    格式化html, 去掉多余的字符，类，script等。
-    :param html:
-    :return:
+    格式化html, 去掉多余的字符，类，script等。这个函数性能可能会较差。
+
+    :param html: 传入的html字符串
+    :return: 处理完的html
     """
     trims = [(r'\n',''),
              (r'\t', ''),
@@ -247,24 +295,31 @@ def format_html_string(html):
                   re.sub(replacement[0], replacement[1], string), trims, html)
 
 
-def urldecode(query):
+def urldecode(query: str) -> dict:
     """
     与urlencode相反，不过没有unquote
-    :param query:
-    :return:
+
+    :param query: url查询字符串
+    :return: 查询字符串的字典
     """
-    return dict(x.split("=")
-                for x in query.strip().split("&")) if query.strip() else dict()
+    if not query.strip():
+        return dict()
+
+    return dict(x.split("=", 1) for x in query.strip().split("&"))
 
 
-def re_search(regex, text, dotall=True, default=""):
+def re_search(regex: typing.Union[typing.Pattern[str], str],
+              text: typing.AnyStr,
+              dotall: bool=True,
+              default: str="") -> str:
     """
     抽取正则规则的第一组元素
-    :param regex:
-    :param text:
-    :param dotall:
-    :param default:
-    :return:
+
+    :param regex: 正则对象或字符串
+    :param text: 被查找的字符串
+    :param dotall: 正则.是否匹配所有字符
+    :param default: 找不到时的默认值
+    :return: 抽取正则规则的第一组
     """
     if isinstance(text, bytes):
         text = text.decode("utf-8")
@@ -284,6 +339,7 @@ class P22P3Encoder(json.JSONEncoder):
     """
     python2转换python3时使用的json encoder
     """
+
     def default(self, obj):
         if isinstance(obj, bytes):
             return obj.decode("utf-8")
@@ -293,14 +349,17 @@ class P22P3Encoder(json.JSONEncoder):
 
 
 def retry_wrapper(
-        retry_times, exception=Exception, error_handler=None, interval=0.1):
+        retry_times: int,
+        exception: type=Exception,
+        error_handler: types.FunctionType=None,
+        interval: float=0.1):
     """
-    函数重试装饰器
+    函数出错时用来重试的装饰器
+
     :param retry_times: 重试次数
     :param exception: 需要重试的异常
     :param error_handler: 出错时的回调函数
     :param interval: 重试间隔时间
-    :return:
     """
     def out_wrapper(func):
         @wraps(func)
@@ -323,12 +382,12 @@ def retry_wrapper(
     return out_wrapper
 
 
-def timeout(timeout_time, default):
+def timeout(timeout_time: int, default):
     """
     装饰一个方法，用来限制其执行时间，超时后返回default，只能在主线程使用。
-    :param timeout_time:
-    :param default:
-    :return:
+
+    :param timeout_time: 超时时间
+    :param default: 超时后的返回
     """
     class DecoratorTimeout(Exception):
         pass
@@ -352,28 +411,33 @@ def timeout(timeout_time, default):
     return timeout_function
 
 
-def custom_re(regex, text):
+def custom_re(regex: typing.Pattern[typing.AnyStr], text: typing.AnyStr) -> list:
     """
     模仿selector.re
-    :param regex:
-    :param text:
+
+    :param regex: 正则表达式对象
+    :param text: 被查询的字符串
     :return:
     """
     return re.findall(regex, text)
 
 
-def replace_dot(data):
+def replace_dot(data: dict) -> dict:
     """
-    mongodb不支持key中带有.，该函数用来将.转换成_
-    :param data:
-    :return:
+    mongodb不支持key中带有"."，该函数用来将"."转换成"_"
+
+    :param data: 要处理的字典
+    :return: 返回的字典
     """
     return dict((k.replace(".", "_"), v) for k, v in data.items())
 
 
-def groupby(it, key):
+def groupby(it: typing.Iterable, key: types.FunctionType) -> dict:
     """
     自实现groupby，itertool的groupby不能合并不连续但是相同的组, 且返回值是iter
+
+    :param it: 一个列表套字典的结构
+    :param key: 从字典从取值的函数，作为group_by后的key
     :return: 字典对象
     """
     groups = dict()
@@ -382,12 +446,15 @@ def groupby(it, key):
     return groups
 
 
-def parse_cookie(string, regex=re.compile(r'([^=]+)=([^\;]+);?\s?')):
+def parse_cookie(string: str,
+                 regex: typing.Pattern[str]=re.compile(r'([^=]+)=([^\;]+);?\s?')
+                 ) -> dict:
     """
     解析cookie
-    :param string:
-    :param regex: 正则表达式
-    :return:
+
+    :param string: cookie字符串
+    :param regex: 解析cookie的正则表达式
+    :return: cookie字典
     """
     return dict((k, v) for k, v in regex.findall(string))
 
@@ -429,11 +496,12 @@ def async_produce_wrapper(producer, logger, batch_size=10):
     return wrapper
 
 
-def load_function(function_str):
+def load_function(function_str: str) -> types.FunctionType:
     """
     返回字符串表示的函数对象
-    :param function_str: module1.module2.function
-    :return: function
+
+    :param function_str: 函数描述字符串，如：module1.module2.function
+    :return: function: 找到的函数
     """
     warnings.warn("load_function() is a deprecated alias since 1.7.19, "
                   "use load() instead.",
@@ -449,11 +517,12 @@ def load_function(function_str):
 load_class = load_function
 
 
-def load_module(module_str):
+def load_module(module_str: str) -> types.ModuleType:
     """
     返回字符串表示的模块
-    :param module_str: os.path
-    :return: os.path
+
+    :param module_str: 模块描述字符串，如: os.path
+    :return: 模块，如: os.path
     """
     warnings.warn("load_function() is a deprecated alias since 1.7.19, "
                   "use load() instead.",
@@ -461,11 +530,12 @@ def load_module(module_str):
     return __import__(module_str, fromlist=module_str.split(".")[-1])
 
 
-def load(prop_str):
+def load(prop_str: str):
     """
     返回字符串表示的模块、函数、类、若类的属性等
-    :param prop_str: module1.class.function....
-    :return: function
+
+    :param prop_str: 函数、类、类属性、模块描述字符串，如: module1.class.function....
+    :return: 函数、类、模块等。
     """
     attr_list = []
     # 每次循环将prop_str当模块路径查找，成功则返回，
@@ -489,9 +559,11 @@ def load(prop_str):
         raise ex
 
 
-def free_port():
+def free_port() -> int:
     """
-    Determines a free port using sockets.
+    找到一个可用端口
+
+    :return 端口号
     """
     free_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     free_socket.bind(('0.0.0.0', 0))
@@ -504,8 +576,8 @@ def free_port():
 def thread_safe(lock):
     """
     对指定函数进行线程安全包装，需要提供锁
+
     :param lock: 锁
-    :return:
     """
     def decorate(func):
         @wraps(func)
@@ -519,8 +591,6 @@ def thread_safe(lock):
 def thread_safe_for_method(func):
     """
     对类中的方法进行线程安全包装
-    :param func:
-    :return:
     """
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -529,7 +599,10 @@ def thread_safe_for_method(func):
     return wrapper
 
 
-def call_later(callback, call_args=tuple(), immediately=True, interval=1):
+def call_later(callback: str,
+               call_args: typing.Tuple=tuple(),
+               immediately: bool=True,
+               interval: typing.Union[float, int]=1):
     """
     应用场景：
     被装饰的方法需要大量调用，随后需要调用保存方法，
@@ -537,11 +610,11 @@ def call_later(callback, call_args=tuple(), immediately=True, interval=1):
     所以设计在装饰方法持续调用一定间隔后，再调用保存方法。
     规定间隔内，无论调用多少次被装饰方法，保存方法只会
     调用一次，除非immediately=True
+
     :param callback: 随后需要调用的方法名
     :param call_args: 随后需要调用的方法所需要的参数
     :param immediately: 是否立即调用
     :param interval: 调用间隔
-    :return:
     """
     def decorate(func):
         @wraps(func)
@@ -561,10 +634,11 @@ def call_later(callback, call_args=tuple(), immediately=True, interval=1):
     return decorate
 
 
-def get_ip():
+def get_ip() -> str:
     """
     获取局域网ip
-    :return:
+
+    :return: 局域网ip
     """
     try:
         import psutil
@@ -597,35 +671,33 @@ def _find_caller_name(is_func=False, steps=1):
             filename = os.path.basename(os.path.dirname(co.co_filename))
         return filename
 
-
-class LazyDict(object):
-    """
-    懒加载dict, 提供一个转换函数，只有在获取dict中的值时，才对指定值进行turn函数的调用
-    """
-    def __init__(self, d, turn):
-        self.dict = d
-        self.turn = turn
-
-    def get(self, item):
-        return self.dict.setdefault(item, self.turn(item, self.dict))
-
-    def __getitem__(self, item):
-        return self.get(item)
-
-    def to_dict(self):
-        return self.dict
+#
+# class LazyDict(object):
+#     """
+#     懒加载dict, 提供一个转换函数，只有在获取dict中的值时，才对指定值进行turn函数的调用
+#     """
+#     def __init__(self, d, turn):
+#         self.dict = d
+#         self.turn = turn
+#
+#     def get(self, item):
+#         return self.dict.setdefault(item, self.turn(item, self.dict))
+#
+#     def __getitem__(self, item):
+#         return self.get(item)
+#
+#     def to_dict(self):
+#         return self.dict
 
 
 def cache_property(func):
     """
     缓存属性，只计算一次
-    :param func:
-    :return:
     """
-    return property(property_cache(func))
+    return property(_property_cache(func))
 
 
-def property_cache(func):
+def _property_cache(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         if func.__name__ not in args[0].__dict__:
@@ -653,11 +725,11 @@ class cache_prop(object):
         raise AttributeError("{} is readonly.".format(self.func.__name__))
 
 
-def cache_for(timeout=10):
+def cache_for(timeout: typing.Union[float, int]=10):
     """
     缓存属性，指定缓存失效时间
+
     :param timeout: 缓存失效时间 second
-    :return:`
     """
     def outer(func):
         @property
@@ -677,6 +749,7 @@ def free_namedtuple(func):
     """
     根据一个类及其参数创建一个类namedtuple class，
     但不同之处在于创建实例成功后可以自由赋值，初时化时指定的值决定其Hash和eq结果
+
     :param func:
     :return:
     """
@@ -688,6 +761,8 @@ class {}(object):
         return {}
 
     def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
         return {}
 """
 
@@ -708,13 +783,13 @@ class {}(object):
     return namespace[class_name]
 
 
-def cache_method(timeout=10):
+def cache_method(timeout: int=10):
     """
     缓存一个方法的调用结果，持续一定时长，
     根据不同的调用参数来缓存不同的结果，调用参数必须是可hash的，
     该方法调用正常时，希望返回真值(形式上为真)，若返回值为假，缓存效果会失效。
+
     :param timeout: 缓存时长 :s
-    :return:
     """
     def cache(func):
         entry_class = free_namedtuple(func)
@@ -740,11 +815,11 @@ def cache_method(timeout=10):
     return cache
 
 
-def cache_method_for_updated(func):
+def cache_method_for_updated(func: types.FunctionType):
     """
     缓存方法调用结果直到实例的updated返回True，与cache_method类似。
-    @param func:
-    @return:
+
+    @param func: 要缓存的方法
     """
     entry_class = free_namedtuple(func)
     data = dict()
@@ -755,7 +830,7 @@ def cache_method_for_updated(func):
         # 没有更新方法(直接使用子类，而不通过cache)，不进行缓存操作
         if not self.updated:
             return func(*args, **kwargs)
-        # 如果pandora配置已更新，则清除所有缓存
+        # 如果已更新，则清除所有缓存
         if self.updated():
             data.clear()
         entry = entry_class(*args[1:], **kwargs)
@@ -771,24 +846,24 @@ def cache_method_for_updated(func):
 
     return inner
 
+#
+# class SafeValue(object):
+#     """
+#     获取某个对象的某个属性值，如果该属性不存在，则返回该对象
+#     """
+#     def __init__(self, node):
+#         self.node = node
+#
+#     def __getattr__(self, item):
+#         return getattr(self.node, item, self.node)
 
-class SafeValue(object):
-    """
-    获取某个对象的某个属性值，如果该属性不存在，则返回该对象
-    """
-    def __init__(self, node):
-        self.node = node
 
-    def __getattr__(self, item):
-        return getattr(self.node, item, self.node)
-
-
-def overflow(val, btc):
+def overflow(val: int, btc: int) -> int:
     """
     对于超出字节长度的数字转换成负数
-    :param val:
+
+    :param val: 值
     :param btc: 字节长度
-    :return:
     """
     max_val = 2 ** (8*btc-1) - 1
     if not -max_val - 1 <= val <= max_val:
@@ -796,21 +871,22 @@ def overflow(val, btc):
     return val
 
 
-def int_overflow(val):
+def int_overflow(val: int) -> int:
     """
     类似js对于超过int范围的数转换成负数
-    :param val:
-    :return:
+    :param val: 值
+    :return: 结果
     """
     return overflow(val, 4)
 
 
-def unsigned_right_shift(n, i):
+def unsigned_right_shift(n: int, i: int) -> int:
     """
     无符号右移python实现
-    :param n:
-    :param i:
-    :return:
+
+    :param n: 值
+    :param i: 移的位数
+    :return: 结果
     """
     # 数字小于0，则转为32位无符号uint
     if n < 0:
@@ -821,21 +897,34 @@ def unsigned_right_shift(n, i):
     return int_overflow(n >> i)
 
 
-def shift_left_for_js(num, count):
-    """位运算左移js版"""
+def shift_left_for_js(num: int, count: int) -> int:
+    """
+    位运算左移js版
+
+    :param num: 值
+    :param count: 移的位数
+    :return: 结果
+    """
     return int_overflow(num << count)
 
 
-def shift_right_for_js(num, count):
-    """位运算左移js版"""
+def shift_right_for_js(num, count) -> int:
+    """
+    位运算右移js版
+
+    :param num: 值
+    :param count: 移的位数
+    :return: 结果
+    """
     return int_overflow(num >> count)
 
 
-async def readexactly(stream, n):
+async def readexactly(stream, n: int) -> bytes:
     """
     asyncio stream read
-    :param steam:
-    :param n:
+
+    :param stream: 流
+    :param n: 读取字节的长度
     :return:
     """
     if hasattr(stream, "_exception") and stream._exception is not None:
@@ -856,6 +945,7 @@ class NotImplementedProp(object):
     """
     用来对子类需要实现的类属性进行占位
     """
+
     def __get__(self, instance, owner):
         return NotImplemented
 
@@ -864,6 +954,7 @@ class classproperty(object):
     """
     property只能用于实例方法到实例属性的转换，使用classproperty来支持类方法到类属性的转换
     """
+
     def __init__(self, func):
         self.func = func
 
@@ -871,10 +962,11 @@ class classproperty(object):
         return self.func(owner)
 
 
-def cache_classproperty(func):
+def cache_classproperty(func: types.FunctionType):
     """
     缓存类属性，只计算一次
-    :param func:
+
+    :param func: 函数
     :return:
     """
     @classproperty
@@ -885,6 +977,19 @@ def cache_classproperty(func):
             setattr(args[0], prop_name, func(*args, **kwargs))
         return args[0].__dict__[prop_name]
     return wrapper
+
+
+def _assert(boolean, data):
+    """
+    增强版assert，如果data是异常对象则直接抛出。
+
+    :param boolean: True/False
+    :param data: 异常或者描述信息
+    """
+    if not boolean:
+        if isinstance(data, Exception):
+            raise data
+        raise AssertionError(data)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,198 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="zh-CN">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>toolkit.processor &#8212; toolkity 1.7.5 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for toolkit.processor</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding:utf-8 -*-</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">reduce</span>
+<span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">contextmanager</span>
+
+
+<div class="viewcode-block" id="Processor"><a class="viewcode-back" href="../../toolkit/processor.html#toolkit.processor.Processor">[docs]</a><span class="k">class</span> <span class="nc">Processor</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    进度管理器，管理收集指定区域业务逻辑流程中的进度执行情况，如现有一个函数执行某个功能，</span>
+<span class="sd">    现需要掌握其执行进度，假设其整个流程可分为三步，分别是三个函数调用，其中进度权重大约是</span>
+<span class="sd">    1:2:3，则创建一个processor，指定其weight为[1, 2, 3]，将processor传入该函数，并在</span>
+<span class="sd">    该函数完成每步进行processor.update调用来更新进度，调用三次，则进度到达100%，</span>
+<span class="sd">    如果每步的子函数需要进一步划分进度，则通过调用：</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        with processor.hand_out(weight) as child_processor</span>
+<span class="sd">            child_function(..., child_processor)</span>
+
+<span class="sd">    child_processor将负责将该步的进度按权重分发到子函数中去。</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weight</span><span class="p">,</span> <span class="n">update_callback</span><span class="p">,</span> <span class="n">_from</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">to</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">skip</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        :param weight: 将一个函数分成的工作区块数，如果是int类型，则是区作区块数，</span>
+<span class="sd">            如果是[1, 4, 6...]类型，则指定了每个工作区块的工作量权重。</span>
+<span class="sd">        :param update_callback: 当完成规定的进度后，调用的函数</span>
+<span class="sd">        :param _from:</span>
+<span class="sd">        :param to:</span>
+<span class="sd">        :param skip:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">weight</span><span class="p">,</span> <span class="s2">&quot;Weight cannot be empty! Got: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">weight</span>
+        <span class="k">assert</span> <span class="n">_from</span> <span class="o">&lt;</span> <span class="n">to</span><span class="p">,</span> <span class="s2">&quot;Process should be increase! Got: </span><span class="si">%s</span><span class="s2">-</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">_from</span><span class="p">,</span> <span class="n">to</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">weight</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">weight</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">weight</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">processes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">weight</span><span class="p">,</span> <span class="n">_from</span><span class="p">,</span> <span class="n">to</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_callback</span> <span class="o">=</span> <span class="n">update_callback</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_process</span> <span class="o">=</span> <span class="n">_from</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_skip</span> <span class="o">=</span> <span class="n">skip</span>
+
+    <span class="k">def</span> <span class="nf">can_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_process</span><span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_skip</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_skip</span><span class="p">(</span><span class="n">current_process</span><span class="p">))</span>
+
+<div class="viewcode-block" id="Processor.skip"><a class="viewcode-back" href="../../toolkit/processor.html#toolkit.processor.Processor.skip">[docs]</a>    <span class="k">def</span> <span class="nf">skip</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        通过判断下一个进度值是否小于当前进度来决定是否跳过</span>
+<span class="sd">        @return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">can_update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">processes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="Processor.skip_all"><a class="viewcode-back" href="../../toolkit/processor.html#toolkit.processor.Processor.skip_all">[docs]</a>    <span class="k">def</span> <span class="nf">skip_all</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        如果派生了子进度条，则通过判断子进度最大进度值来决定是否直接跳过子进度条</span>
+<span class="sd">        @return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">can_update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">processes</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span></div>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">split</span><span class="p">(</span><span class="n">weight</span><span class="p">,</span> <span class="n">_from</span><span class="p">,</span> <span class="n">to</span><span class="p">):</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">weight</span><span class="p">)</span>
+        <span class="n">distance</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">to</span> <span class="o">-</span> <span class="n">_from</span><span class="p">)</span>
+        <span class="n">step</span> <span class="o">=</span> <span class="n">distance</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">count</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">step</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">weight</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">processes</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">w1</span><span class="p">,</span> <span class="n">w2</span><span class="p">:</span> <span class="n">processes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="nb">int</span><span class="p">(</span><span class="n">_from</span> <span class="o">+</span> <span class="n">step</span><span class="o">*</span><span class="p">(</span><span class="n">w1</span> <span class="o">+</span> <span class="n">w2</span><span class="p">)))</span> <span class="ow">or</span> <span class="n">w1</span> <span class="o">+</span> <span class="n">w2</span><span class="p">,</span> <span class="n">weight</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">processes</span>
+
+<div class="viewcode-block" id="Processor.update"><a class="viewcode-back" href="../../toolkit/processor.html#toolkit.processor.Processor.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        将进度更新到下一个进度值</span>
+<span class="sd">        @param message:</span>
+<span class="sd">        @return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">current_process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">processes</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">can_update</span><span class="p">(</span><span class="n">current_process</span><span class="p">)</span> <span class="ow">and</span> <span class="n">current_process</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_process</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">message</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_callback</span><span class="p">(</span><span class="n">current_process</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_callback</span><span class="p">(</span><span class="n">current_process</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_process</span> <span class="o">=</span> <span class="n">current_process</span></div>
+
+<div class="viewcode-block" id="Processor.hand_out"><a class="viewcode-back" href="../../toolkit/processor.html#toolkit.processor.Processor.hand_out">[docs]</a>    <span class="nd">@contextmanager</span>
+    <span class="k">def</span> <span class="nf">hand_out</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weight</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        为子函数派生子进度条，子进度条根据权重分配父进度其中一个工作区块对应的进度区间</span>
+<span class="sd">        @param weight:</span>
+<span class="sd">        @return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">current_process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">processes</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">child</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+            <span class="n">weight</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_callback</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_process</span><span class="p">,</span> <span class="n">current_process</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_skip</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">child</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_process</span> <span class="o">=</span> <span class="n">current_process</span></div></div>
+
+
+<div class="viewcode-block" id="AsyncProcessor"><a class="viewcode-back" href="../../toolkit/processor.html#toolkit.processor.AsyncProcessor">[docs]</a><span class="k">class</span> <span class="nc">AsyncProcessor</span><span class="p">(</span><span class="n">Processor</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    update方法变为异步的形式</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AsyncProcessor.update"><a class="viewcode-back" href="../../toolkit/processor.html#toolkit.processor.AsyncProcessor.update">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        将进度更新到下一个进度值</span>
+
+<span class="sd">        @param message:</span>
+<span class="sd">        @return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">current_process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">processes</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">can_update</span><span class="p">(</span><span class="n">current_process</span><span class="p">)</span> <span class="ow">and</span> <span class="n">current_process</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_process</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">message</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_callback</span><span class="p">(</span><span class="n">current_process</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_callback</span><span class="p">(</span><span class="n">current_process</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_process</span> <span class="o">=</span> <span class="n">current_process</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  <li><a href="../toolkit.html">toolkit</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, cnaafhvk.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
