@@ -203,6 +203,7 @@ def safely_json_loads(json_str: typing.AnyStr,
                       escape: bool=True):
     """
     返回安全的json类型
+
     :param json_str: 要被loads的字符串
     :param defaulttype: 若load失败希望得到的对象类型
     :param escape: 是否将单引号变成双引号
@@ -907,7 +908,7 @@ def shift_left_for_js(num: int, count: int) -> int:
     return int_overflow(num << count)
 
 
-def shift_right_for_js(num, count) -> int:
+def shift_right_for_js(num: int, count: int) -> int:
     """
     位运算右移js版
 

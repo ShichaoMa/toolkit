@@ -1,4 +1,4 @@
-from toolkit import property_cache, cache_property
+from toolkit import _property_cache, cache_property
 
 
 b = 3
@@ -7,7 +7,7 @@ b = 3
 class A(object):
 
     @property
-    @property_cache
+    @_property_cache
     def env_a(self):
         return b
 
