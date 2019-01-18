@@ -19,7 +19,7 @@ from queue import Empty
 from future.utils import raise_from
 from functools import wraps, reduce
 
-__version__ = '1.7.26'
+__version__ = '1.7.27'
 
 
 def test_prepare(search_paths :typing.List[str]=None):
@@ -787,7 +787,7 @@ def cache_method(timeout: int=10):
     """
     缓存一个方法的调用结果，持续一定时长，
     根据不同的调用参数来缓存不同的结果，调用参数必须是可hash的，
-    该方法调用正常时，希望返回真值(形式上为真)，若返回值为假，缓存效果会失效。
+    该方法调用失败时，希望抛出异常，此时缓存会失败。
 
     :param timeout: 缓存时长 :s
     """
@@ -806,8 +806,7 @@ def cache_method(timeout: int=10):
             stored = data.get(entry, entry)
             if entry not in data or time.time() - timeout > stored.ts:
                 entry.result = func(*args, **kwargs)
-                if entry.result:
-                    data[entry] = entry
+                data[entry] = entry
                 return entry.result
             else:
                 return stored.result

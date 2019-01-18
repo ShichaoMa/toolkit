@@ -3,3 +3,4 @@ redis
 kafka-python
 requests
 future
+markdown
