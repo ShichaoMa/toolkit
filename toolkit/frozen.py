@@ -10,19 +10,19 @@ class Frozen(MutableSequence, MutableMapping):
     def __new__(cls, json):
         if isinstance(json, (MutableSequence, MutableSet)):
             instance = super().__new__(cls)
-            instance.json = [cls(val) for val in json]
+            object.__setattr__(instance, "_json", [cls(val) for val in json])
         elif isinstance(json, MutableMapping):
             instance = super().__new__(cls)
-            instance.json = json
+            object.__setattr__(instance, "_json", json)
         else:
             instance = json
         return instance
 
     def __getattr__(self, item):
-        if hasattr(self.json, item):
-            return getattr(self.json, item)
+        if hasattr(self._json, item):
+            return getattr(self._json, item)
         else:
-            prop_val = self.json.get(item)
+            prop_val = self._json.get(item)
             if prop_val is None:
                 raise AttributeError(item)
             elif isinstance(prop_val, (list, dict)):
@@ -30,29 +30,32 @@ class Frozen(MutableSequence, MutableMapping):
             else:
                 return prop_val
 
+    def __setattr__(self, key, value):
+        raise NotImplementedError
+
     def __getitem__(self, item):
-        return self.json[item]
+        return self._json[item]
 
     def __iter__(self):
-        return iter(self.json)
+        return iter(self._json)
 
     def __bool__(self):
-        return bool(self.json)
+        return bool(self._json)
 
     def __len__(self):
-        return len(self.json)
+        return len(self._json)
 
     def __delitem__(self, item):
-        return NotImplemented
+        raise NotImplementedError
 
     def __setitem__(self, key, value):
-        return NotImplemented
+        raise NotImplementedError
 
     def insert(self, index, value):
-        return NotImplemented
+        raise NotImplementedError
 
     def __str__(self):
-        return str(self.json)
+        return str(self._json)
 
     __repr__ = __str__
 
