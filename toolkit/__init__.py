@@ -19,7 +19,7 @@ from queue import Empty
 from future.utils import raise_from
 from functools import wraps, reduce
 
-__version__ = '1.7.29'
+__version__ = '1.7.30'
 
 
 def test_prepare(search_paths :typing.List[str]=None):
@@ -950,6 +950,19 @@ class NotImplementedProp(object):
         return NotImplemented
 
 
+def find_ancestor(cls, until_not_have=None):
+    """
+    查找祖先，直到祖先为object或者祖先没有until_not_have这个属性时，返回当前类。
+
+    :param cls:
+    :return:
+    """
+    if until_not_have and not hasattr(cls.__base__, until_not_have) \
+            or cls.__base__ == object:
+        return cls
+    return find_ancestor(cls.__base__)
+
+
 class classproperty(object):
     """
     property只能用于实例方法到实例属性的转换，使用classproperty来支持类方法到类属性的转换
@@ -962,21 +975,40 @@ class classproperty(object):
         return self.func(owner)
 
 
-def cache_classproperty(func: types.FunctionType):
+def cache_classproperty_for(all=False):
     """
-    缓存类属性，只计算一次
+    缓存类属性，只计算一次，如果all=True，子类和父类共用
 
-    :param func: 函数
+    :param all:
     :return:
     """
-    @classproperty
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        prop_name = "_" + func.__name__
-        if prop_name not in args[0].__dict__:
-            setattr(args[0], prop_name, func(*args, **kwargs))
-        return args[0].__dict__[prop_name]
-    return wrapper
+    def _cache_classproperty(func: types.FunctionType):
+
+        base = None
+
+        @classproperty
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            nonlocal base
+            if base is None:
+                if all:
+                    base = find_ancestor(args[0], until_not_have=func.__name__)
+                else:
+                    base = args[0]
+
+            prop_name = "_" + func.__name__
+            if prop_name not in base.__dict__:
+                setattr(base, prop_name, func(*args, **kwargs))
+            return base.__dict__[prop_name]
+
+        return wrapper
+    return _cache_classproperty
+
+
+global_cache_classproperty = cache_classproperty_for(all=True)
+
+
+cache_classproperty = cache_classproperty_for(all=False)
 
 
 def _assert(boolean, data):
