@@ -30,7 +30,7 @@ class Processor(object):
         :param skip:
         """
         assert weight, "Weight cannot be empty! Got: %s" % weight
-        assert _from < to, "Process should be increase! Got: %s-%s" % (_from, to)
+        assert _from <= to, "Process should be increase! Got: %s-%s" % (_from, to)
         if isinstance(weight, int):
             weight = [1] * weight
 
@@ -61,8 +61,9 @@ class Processor(object):
         count = sum(weight)
         distance = float(to - _from)
         step = distance / float(count)
+        # 如果步长是0， 则证明每一步和开始的进度是一样的
         if step == 0:
-            return [0] * len(weight)
+            return [to] * len(weight)
         else:
             processes = []
             reduce(lambda w1, w2: processes.append(
