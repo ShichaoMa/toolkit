@@ -16,10 +16,25 @@ class TestProcesser(object):
                (weight[0] + weight[1] + weight[2])// z
 
     def test_processor_with_same_from_to(self, capsys):
-        processor = Processor(2, print, _from=11, to=11)
+        updated = list()
+
+        def fun(process):
+            updated.append(process)
+        processor = Processor(2, fun, _from=11, to=11)
         assert processor.processes == [11, 11]
         processor.update()
-        captured = capsys.readouterr()
-        assert captured.out == ""
+        assert updated == []
         processor.update()
-        assert captured.out == ""
+        assert updated == []
+
+    def test_processor_with_weight_zero(self):
+        updated = list()
+
+        def fun(process):
+            updated.append(process)
+        processor = Processor(2, fun)
+        assert processor.processes == [50, 100]
+        processor.update()
+        with processor.hand_out(0) as child:
+            pass
+        assert updated == [50, 100]

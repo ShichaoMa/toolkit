@@ -29,7 +29,6 @@ class Processor(object):
         :param to:
         :param skip:
         """
-        assert weight, "Weight cannot be empty! Got: %s" % weight
         assert _from <= to, "Process should be increase! Got: %s-%s" % (_from, to)
         if isinstance(weight, int):
             weight = [1] * weight
@@ -58,6 +57,10 @@ class Processor(object):
 
     @staticmethod
     def split(weight, _from, to):
+        # 没有权重时，直接返回
+        if not weight:
+            return weight
+
         count = sum(weight)
         distance = float(to - _from)
         step = distance / float(count)
@@ -76,7 +79,9 @@ class Processor(object):
         @param message:
         @return:
         """
-        current_process = self.processes.pop(0)
+        self._update(self.processes.pop(0), message)
+
+    def _update(self, current_process, message=None):
         if self.can_update(current_process) and current_process != self.last_process:
             if message:
                 self.update_callback(current_process, message)
@@ -96,7 +101,7 @@ class Processor(object):
             weight, self.update_callback,
             self.last_process, current_process, self._skip)
         yield child
-        self.last_process = current_process
+        self._update(current_process)
 
 
 class AsyncProcessor(Processor):

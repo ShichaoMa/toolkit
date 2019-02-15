@@ -10,7 +10,6 @@ import ctypes
 import socket
 import signal
 import typing
-import numbers
 import inspect
 import logging
 import warnings
@@ -19,7 +18,7 @@ from queue import Empty
 from future.utils import raise_from
 from functools import wraps, reduce
 
-__version__ = '1.7.31'
+__version__ = '1.7.32'
 
 
 def test_prepare(search_paths :typing.List[str]=None):
