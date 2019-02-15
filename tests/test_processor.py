@@ -1,6 +1,6 @@
 import pytest
 
-from toolkit.processor import Processor
+from toolkit.processor import Processor, AsyncProcessor
 
 
 @pytest.fixture(scope="module", params=[[183, 432, 1023], [11, 43, 59]])
@@ -38,3 +38,20 @@ class TestProcesser(object):
         with processor.hand_out(0) as child:
             pass
         assert updated == [50, 100]
+
+    @pytest.mark.asyncio
+    async def test_async_processor(self):
+        updated = list()
+        messages = list()
+
+        async def fun(process, message):
+            updated.append(process)
+            messages.append(message)
+
+        processor = AsyncProcessor(2, fun)
+        assert processor.processes == [50, 100]
+        await processor.update("1")
+        async with processor.hand_out(0) as child:
+            pass
+        assert updated == [50, 100]
+        assert messages == ["1", ""]

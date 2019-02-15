@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 from functools import reduce
-from contextlib import contextmanager
+from .async_context import contextmanager
 
 
 class Processor(object):
@@ -83,7 +83,7 @@ class Processor(object):
 
     def _update(self, current_process, message=None):
         if self.can_update(current_process) and current_process != self.last_process:
-            if message:
+            if message is not None:
                 self.update_callback(current_process, message)
             else:
                 self.update_callback(current_process)
@@ -101,7 +101,10 @@ class Processor(object):
             weight, self.update_callback,
             self.last_process, current_process, self._skip)
         yield child
-        self._update(current_process)
+        try:
+            self._update(current_process)
+        except TypeError:
+            self._update(current_process, "")
 
 
 class AsyncProcessor(Processor):
@@ -112,14 +115,32 @@ class AsyncProcessor(Processor):
     async def update(self, message=None):
         """
         将进度更新到下一个进度值
-
         @param message:
         @return:
         """
-        current_process = self.processes.pop(0)
+        await self._update(self.processes.pop(0), message)
+
+    async def _update(self, current_process, message=None):
         if self.can_update(current_process) and current_process != self.last_process:
-            if message:
+            if message is not None:
                 await self.update_callback(current_process, message)
             else:
                 await self.update_callback(current_process)
         self.last_process = current_process
+
+    @contextmanager
+    async def hand_out(self, weight):
+        """
+        为子函数派生子进度条，子进度条根据权重分配父进度其中一个工作区块对应的进度区间
+        @param weight:
+        @return:
+        """
+        current_process = self.processes.pop(0)
+        child = self.__class__(
+            weight, self.update_callback,
+            self.last_process, current_process, self._skip)
+        yield child
+        try:
+            await self._update(current_process)
+        except TypeError:
+            await self._update(current_process, "")
