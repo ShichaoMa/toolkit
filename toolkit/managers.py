@@ -1,7 +1,7 @@
 import time
 import traceback
 
-from . import _find_caller_name
+from . import find_caller_name
 
 __all__ = ["Blocker", "ExceptContext", "Timer"]
 
@@ -75,7 +75,7 @@ class ExceptContext(object):
         self.exception = exception
         self.got_err = False
         self.err_info = None
-        self.func_name = func_name or _find_caller_name(is_func=True)
+        self.func_name = func_name or find_caller_name(is_func=True)
 
     def __enter__(self):
         return self

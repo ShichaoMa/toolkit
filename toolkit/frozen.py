@@ -10,7 +10,8 @@ class Frozen(MutableSequence, MutableMapping):
     def __new__(cls, json):
         if isinstance(json, (MutableSequence, MutableSet)):
             instance = super().__new__(cls)
-            object.__setattr__(instance, "_json", [cls(val) for val in json])
+            object.__setattr__(instance, "_json",
+                               json.__class__(cls(val) for val in json))
         elif isinstance(json, MutableMapping):
             instance = super().__new__(cls)
             object.__setattr__(instance, "_json", json)
@@ -59,12 +60,27 @@ class Frozen(MutableSequence, MutableMapping):
 
     __repr__ = __str__
 
+    def normalize(self):
+        """
+        使用Frozen对象获取列表或字典时，为了支持级联`.`操作，
+        字典和列表对象被转换成了Frozen对象，如果直接使用，有时可能会引发错误。
+        使用此方法得到真实的列表或字典。
+        :return:
+        """
+        val = self._json
+        if isinstance(val, (MutableSequence, MutableSet)):
+            return val.__class__(
+                i.normalize() if hasattr(i, "normalize") else i for i in val)
+        else:
+            return val
+
 
 class FrozenSettings(Frozen):
     pass
 
 
 if __name__ == "__main__":
-    json = {"aa": [1, 2, 3, {"b": 3, "c": [4, 5, {"d": 33}]} ]}
+    json = {"aa": [1, 2, 3, {"b": 3, "c": [4, 5, {"d": 33}]}]}
     f = Frozen(json)
     print(f.aa[3].c[2].d)
+    print(f)

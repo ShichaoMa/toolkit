@@ -17,6 +17,7 @@ def contextmanager(func):
 class _AsyncGeneratorContextManager(_GeneratorContextManager):
     def __enter__(self):
         try:
+            # 同步函数执行异步函数需要满足loop还未开始，如果loop已经开始，下面的代码会报错
             if inspect.isasyncgen(self.gen):
                 loop = asyncio.get_event_loop()
                 return loop.run_until_complete(self.gen.asend(None))
@@ -30,6 +31,7 @@ class _AsyncGeneratorContextManager(_GeneratorContextManager):
             try:
                 if inspect.isgenerator(self.gen):
                     self.gen.send(None)
+                # 同步函数执行异步函数需要满足loop还未开始，如果loop已经开始，下面的代码会报错
                 elif inspect.isasyncgen(self.gen):
                     loop = asyncio.get_event_loop()
                     loop.run_until_complete(self.gen.asend(None))
@@ -47,6 +49,7 @@ class _AsyncGeneratorContextManager(_GeneratorContextManager):
             try:
                 if inspect.isgenerator(self.gen):
                     self.gen.throw(type, value, traceback)
+                # 同步函数执行异步函数需要满足loop还未开始，如果loop已经开始，下面的代码会报错
                 elif inspect.isasyncgen(self.gen):
                     loop = asyncio.get_event_loop()
                     loop.run_until_complete(

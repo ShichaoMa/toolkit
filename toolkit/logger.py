@@ -8,7 +8,7 @@ from logging import handlers
 from threading import current_thread
 from pythonjsonlogger.jsonlogger import JsonFormatter
 
-from . import _find_caller_name
+from . import find_caller_name
 from .singleton import Singleton
 
 __all__ = ["UDPLogstashHandler", "Logger"]
@@ -27,7 +27,7 @@ class Logger(object, metaclass=Singleton):
     format_string = '%(asctime)s [%(name)s:%(threadname)s]%(level)s: %(message)s'
 
     def __init__(self, settings, name=None):
-        self.name = name or _find_caller_name(steps=2)
+        self.name = name or find_caller_name(steps=2)
         self.json = settings.get_bool('LOG_JSON', True)
         self.level = settings.get('LOG_LEVEL', 'DEBUG')
         self.stdout = settings.get_bool('LOG_STDOUT', True)

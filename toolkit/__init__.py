@@ -18,7 +18,7 @@ from queue import Empty
 from future.utils import raise_from
 from functools import wraps, reduce
 
-__version__ = '1.7.33'
+__version__ = '1.7.34'
 
 
 def test_prepare(search_paths :typing.List[str]=None):
@@ -657,7 +657,13 @@ def get_ip() -> str:
         return netcard_info[0][1]
 
 
-def _find_caller_name(is_func=False, steps=1):
+def find_caller_name(is_func=False, steps=1):
+    """
+    用来发现调用这个方法的调用者的名字，类名或模块名
+    :param is_func:
+    :param steps:
+    :return:
+    """
     frame = logging.currentframe()
     for i in range(steps + 1):
         co = frame.f_code
