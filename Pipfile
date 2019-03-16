@@ -8,7 +8,6 @@ pytest-cov = "*"
 pytest-apistellar = "*"
 pytest-asyncio = "*"
 pytest = "*"
-toolkity = {editable = true,path = "."}
 
 [packages]
 python-json-logger = "*"
