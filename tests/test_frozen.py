@@ -14,6 +14,15 @@ class TestFrozen(object):
         a = Frozen([{"b": 3}])
         assert a[0].b == 3
 
+    def test_normalize(self):
+        a = Frozen([{"b": 3}, {"a", "b"}, ["c", ["b", "d"]]])
+        assert isinstance(a.normalize(), list)
+        assert isinstance(a[0], Frozen)
+        assert isinstance(a.normalize()[0], dict)
+        assert isinstance(a[1], Frozen)
+        assert any(isinstance(i, Frozen) for i in a[2])
+        assert any(isinstance(i, list) for i in a[2].normalize())
+
     def test_readonly(self):
         a = Frozen({"a": 1})
         with pytest.raises(NotImplementedError):

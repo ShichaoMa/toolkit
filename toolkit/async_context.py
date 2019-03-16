@@ -3,6 +3,7 @@ import asyncio
 import inspect
 
 from functools import wraps
+from threading import Thread
 from contextlib import _GeneratorContextManager
 
 
@@ -14,12 +15,37 @@ def contextmanager(func):
     return helper
 
 
+def await_async_gen(gen_method, gen_args=(None, )):
+    """
+    如果event_loop已经开始，那么在异步方法中执行同步方法时又遇到了异步方法，
+    使用run_until_complete会报错: `This event loop is already running`
+    所以启用一个子线程来完成这件事。
+    :param gen_method:
+    :param gen_args:
+    :return:
+    """
+    container = dict()
+    th = Thread(target=_child_thread, args=(container, gen_method, gen_args))
+    th.start()
+    th.join()
+    if "rs" in container:
+        return container["rs"]
+    raise container["err"]
+
+
+def _child_thread(container, gen_method, gen_args):
+    loop = asyncio.new_event_loop()
+    try:
+        container["rs"] = loop.run_until_complete(gen_method(*gen_args))
+    except Exception as e:
+        container["err"] = e
+
+
 class _AsyncGeneratorContextManager(_GeneratorContextManager):
     def __enter__(self):
         try:
             if inspect.isasyncgen(self.gen):
-                loop = asyncio.get_event_loop()
-                return loop.run_until_complete(self.gen.asend(None))
+               return await_async_gen(self.gen.asend)
             else:
                 return self.gen.send(None)
         except StopIteration:
@@ -31,8 +57,7 @@ class _AsyncGeneratorContextManager(_GeneratorContextManager):
                 if inspect.isgenerator(self.gen):
                     self.gen.send(None)
                 elif inspect.isasyncgen(self.gen):
-                    loop = asyncio.get_event_loop()
-                    loop.run_until_complete(self.gen.asend(None))
+                    await_async_gen(self.gen.asend)
                 else:
                     return False
             except (StopIteration, StopAsyncIteration):
@@ -48,9 +73,8 @@ class _AsyncGeneratorContextManager(_GeneratorContextManager):
                 if inspect.isgenerator(self.gen):
                     self.gen.throw(type, value, traceback)
                 elif inspect.isasyncgen(self.gen):
-                    loop = asyncio.get_event_loop()
-                    loop.run_until_complete(
-                        self.gen.athrow(type, value, traceback))
+                    await_async_gen(self.gen.athrow, (type, value, traceback))
+
                 else:
                     raise value
             except (StopIteration, StopAsyncIteration) as exc:
