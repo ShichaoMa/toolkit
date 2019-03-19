@@ -23,19 +23,17 @@ def contextmanager(func):
     return helper
 
 
-def await_async_method(method, args: tuple=None, kwargs: dict=None):
+def await_async_method(coroutine):
     """
     如果event_loop已经开始，那么在异步方法中执行同步方法时又遇到了异步方法，
     使用run_until_complete会报错: `This event loop is already running`
     所以启用一个子线程来完成这件事。
-    :param method:
-    :param args:
-    :param kwargs:
+    :param coroutine
     :return:
     """
     container = dict()
-    th = Thread(target=_async_run_in_child_thread_loop,
-                args=(container, method, args, kwargs))
+    th = Thread(target=_coroutine_run_in_child_thread_loop,
+                args=(container, coroutine))
     th.start()
     th.join()
     if "rs" in container:
@@ -43,16 +41,20 @@ def await_async_method(method, args: tuple=None, kwargs: dict=None):
     raise container["err"]
 
 
+awt = await_async_method
+
+
 def sync_run_async(func):
     """
-    同步执行异步
+    将异步方法通过该装饰器装饰后可以被同步方法同步调用，这个方法只是做用于容错，
+    一般不要使用，同步方法会让该异步方法失去异步执行的能力，应该从设计上避免使用这个方法。
     :param func:
     :return: func
     """
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        return await_async_method(func, args=args, kwargs=kwargs)
+        return await_async_method(func(*args, **kwargs))
 
     return wrapper
 
@@ -101,20 +103,16 @@ def async_cache_classproperty(func):
     return cache_classproperty(sync_run_async(func))
 
 
-def _async_run_in_child_thread_loop(container, method, args, kwargs):
+def _coroutine_run_in_child_thread_loop(container, coroutine):
     """
     使用一子线程事件循环还执行异步方法。
     :param container:
-    :param method:
-    :param args:
-    :param kwargs:
+    :param coroutine:
     :return:
     """
     loop = asyncio.new_event_loop()
     try:
-        args = args or tuple()
-        kwargs = kwargs or dict()
-        container["rs"] = loop.run_until_complete(method(*args, **kwargs))
+        container["rs"] = loop.run_until_complete(coroutine)
     except Exception as e:
         container["err"] = e
 
@@ -126,7 +124,7 @@ class _AsyncGeneratorContextManager(_GeneratorContextManager):
     def __enter__(self):
         try:
             if inspect.isasyncgen(self.gen):
-               return await_async_method(self.gen.asend, args=(None, ))
+               return await_async_method(self.gen.asend(None))
             else:
                 return self.gen.send(None)
         except StopIteration:
@@ -138,7 +136,7 @@ class _AsyncGeneratorContextManager(_GeneratorContextManager):
                 if inspect.isgenerator(self.gen):
                     self.gen.send(None)
                 elif inspect.isasyncgen(self.gen):
-                    await_async_method(self.gen.asend, args=(None, ))
+                    await_async_method(self.gen.asend(None))
                 else:
                     return False
             except (StopIteration, StopAsyncIteration):
@@ -154,8 +152,7 @@ class _AsyncGeneratorContextManager(_GeneratorContextManager):
                 if inspect.isgenerator(self.gen):
                     self.gen.throw(type, value, traceback)
                 elif inspect.isasyncgen(self.gen):
-                    await_async_method(
-                        self.gen.athrow, args=(type, value, traceback))
+                    await_async_method(self.gen.athrow(type, value, traceback))
 
                 else:
                     raise value

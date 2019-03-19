@@ -18,7 +18,7 @@ from queue import Empty
 from future.utils import raise_from
 from functools import wraps, reduce
 
-__version__ = '1.7.36'
+__version__ = '1.7.38'
 
 
 def test_prepare(search_paths :typing.List[str]=None):
@@ -38,6 +38,8 @@ def test_prepare(search_paths :typing.List[str]=None):
 def debugger():
     """
     pdb的简单封装，在debug=False的情况下，不会打断点
+
+    :return:
     """
     try:
         debug = bool(eval(os.environ.get("DEBUG", "0").lower().capitalize()))
@@ -47,6 +49,19 @@ def debugger():
     if debug:
         d = pdb.Pdb()
         d.set_trace( sys._getframe().f_back)
+
+
+def idb():
+    """
+    ipdb封装
+
+    :return:
+    """
+    import ipdb
+    from toolkit.async_context import awt
+    frame = sys._getframe().f_back
+    frame.f_locals["await"] = awt
+    ipdb.set_trace(frame)
 
 
 def arg_to_iter(arg: typing.Any) -> typing.List[typing.Any]:

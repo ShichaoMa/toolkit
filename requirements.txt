@@ -4,3 +4,4 @@ kafka-python
 requests
 future
 markdown
+ipdb

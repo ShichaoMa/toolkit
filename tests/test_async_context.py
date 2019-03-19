@@ -1,7 +1,7 @@
 import pytest
 
 from toolkit.async_context import contextmanager, \
-    async_cached_property, async_property
+    async_cached_property, async_property, awt
 
 
 class TestError(RuntimeError):
@@ -180,3 +180,11 @@ class TestAsyncProperty(object):
         obj.age
         captured = capsys.readouterr()
         assert captured.out.count("age") == 1
+
+
+class TestAsyncRun(object):
+
+    def test_run_async(self):
+        async def fun(a):
+            return a
+        assert awt(fun(1)) == 1
