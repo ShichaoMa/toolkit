@@ -6,8 +6,15 @@ from functools import wraps
 from threading import Thread
 from contextlib import _GeneratorContextManager
 
+from . import _property_cache
+
 
 def contextmanager(func):
+    """
+    异步下上文管理器，其支持装饰同步生成器或异步生成器，并支持使用async with 或with。
+    :param func:
+    :return:
+    """
     @wraps(func)
     def helper(*args, **kwds):
         return _AsyncGeneratorContextManager(func, args, kwds)
@@ -15,17 +22,19 @@ def contextmanager(func):
     return helper
 
 
-def await_async_gen(gen_method, gen_args=(None, )):
+def await_async_method(method, args: tuple=None, kwargs: dict=None):
     """
     如果event_loop已经开始，那么在异步方法中执行同步方法时又遇到了异步方法，
     使用run_until_complete会报错: `This event loop is already running`
     所以启用一个子线程来完成这件事。
-    :param gen_method:
-    :param gen_args:
+    :param method:
+    :param args:
+    :param kwargs:
     :return:
     """
     container = dict()
-    th = Thread(target=_child_thread, args=(container, gen_method, gen_args))
+    th = Thread(target=_async_run_in_child_thread_loop,
+                args=(container, method, args, kwargs))
     th.start()
     th.join()
     if "rs" in container:
@@ -33,19 +42,63 @@ def await_async_gen(gen_method, gen_args=(None, )):
     raise container["err"]
 
 
-def _child_thread(container, gen_method, gen_args):
+def sync_run_async(func):
+    """
+    同步执行异步
+    :param func:
+    :return:
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        return await_async_method(func, args=args, kwargs=kwargs)
+
+    return wrapper
+
+
+def async_property(func):
+    """
+    异步property，支持将异步方法转换成同步属性，但不支持后续的property.setter等方法。
+    :return:
+    """
+    return property(sync_run_async(func))
+
+
+def async_cached_property(func):
+    """
+    有缓存效果异步属性
+    :param func:
+    :return:
+    """
+    return property(_property_cache(sync_run_async(func)))
+
+
+def _async_run_in_child_thread_loop(container, method, args, kwargs):
+    """
+    使用一子线程事件循环还执行异步方法。
+    :param container:
+    :param method:
+    :param args:
+    :param kwargs:
+    :return:
+    """
     loop = asyncio.new_event_loop()
     try:
-        container["rs"] = loop.run_until_complete(gen_method(*gen_args))
+        args = args or tuple()
+        kwargs = kwargs or dict()
+        container["rs"] = loop.run_until_complete(method(*args, **kwargs))
     except Exception as e:
         container["err"] = e
 
 
 class _AsyncGeneratorContextManager(_GeneratorContextManager):
+    """
+    异步上下文管理器
+    """
     def __enter__(self):
         try:
             if inspect.isasyncgen(self.gen):
-               return await_async_gen(self.gen.asend)
+               return await_async_method(self.gen.asend, args=(None, ))
             else:
                 return self.gen.send(None)
         except StopIteration:
@@ -57,7 +110,7 @@ class _AsyncGeneratorContextManager(_GeneratorContextManager):
                 if inspect.isgenerator(self.gen):
                     self.gen.send(None)
                 elif inspect.isasyncgen(self.gen):
-                    await_async_gen(self.gen.asend)
+                    await_async_method(self.gen.asend, args=(None, ))
                 else:
                     return False
             except (StopIteration, StopAsyncIteration):
@@ -73,7 +126,8 @@ class _AsyncGeneratorContextManager(_GeneratorContextManager):
                 if inspect.isgenerator(self.gen):
                     self.gen.throw(type, value, traceback)
                 elif inspect.isasyncgen(self.gen):
-                    await_async_gen(self.gen.athrow, (type, value, traceback))
+                    await_async_method(
+                        self.gen.athrow, args=(type, value, traceback))
 
                 else:
                     raise value

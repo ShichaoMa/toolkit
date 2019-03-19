@@ -18,7 +18,7 @@ from queue import Empty
 from future.utils import raise_from
 from functools import wraps, reduce
 
-__version__ = '1.7.35'
+__version__ = '1.7.36'
 
 
 def test_prepare(search_paths :typing.List[str]=None):
@@ -1027,13 +1027,3 @@ def _assert(boolean, data):
         if isinstance(data, Exception):
             raise data
         raise AssertionError(data)
-
-
-if __name__ == "__main__":
-    def a(v):
-        return v
-    def b(v):
-        return v
-    def c(v):
-        return 2
-    print(Compose(a,b,c)())

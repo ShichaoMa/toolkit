@@ -1,6 +1,7 @@
 import pytest
 
-from toolkit.async_context import contextmanager
+from toolkit.async_context import contextmanager, \
+    async_cached_property, async_property
 
 
 class TestError(RuntimeError):
@@ -134,3 +135,48 @@ class TestContextManager(object):
         with pytest.raises(TestError):
             with async_method_error_after() as rs:
                 assert rs == 2
+
+
+class AsyncPropertyClass(object):
+
+    @async_property
+    async def name(self):
+        print("name")
+        return "tom"
+
+    @async_cached_property
+    async def age(self):
+        print("age")
+        return 18
+
+
+class TestAsyncProperty(object):
+    def test_async_property(self, capsys):
+        obj = AsyncPropertyClass()
+        assert obj.name == "tom"
+        obj.name
+        captured = capsys.readouterr()
+        assert captured.out.count("name") == 2
+
+    @pytest.mark.asyncio
+    async def test_async_property_in_async(self, capsys):
+        obj = AsyncPropertyClass()
+        assert obj.name == "tom"
+        obj.name
+        captured = capsys.readouterr()
+        assert captured.out.count("name") == 2
+
+    def test_async_cached_property(self, capsys):
+        obj = AsyncPropertyClass()
+        assert obj.age == 18
+        obj.age
+        captured = capsys.readouterr()
+        assert captured.out.count("age") == 1
+
+    @pytest.mark.asyncio
+    async def test_async_cached_property_in_async(self, capsys):
+        obj = AsyncPropertyClass()
+        assert obj.age == 18
+        obj.age
+        captured = capsys.readouterr()
+        assert captured.out.count("age") == 1
