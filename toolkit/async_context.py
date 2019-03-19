@@ -6,7 +6,8 @@ from functools import wraps
 from threading import Thread
 from contextlib import _GeneratorContextManager
 
-from . import _property_cache
+from . import _property_cache, global_cache_classproperty,\
+    cache_classproperty, classproperty
 
 
 def contextmanager(func):
@@ -46,7 +47,7 @@ def sync_run_async(func):
     """
     同步执行异步
     :param func:
-    :return:
+    :return: func
     """
 
     @wraps(func)
@@ -71,6 +72,33 @@ def async_cached_property(func):
     :return:
     """
     return property(_property_cache(sync_run_async(func)))
+
+
+def async_classproperty(func):
+    """
+    异步类属性
+    :param func:
+    :return:
+    """
+    return classproperty(sync_run_async(func))
+
+
+def async_global_cache_classproperty(func):
+    """
+    异步全局类缓存属性
+    :param func:
+    :return:
+    """
+    return global_cache_classproperty(sync_run_async(func))
+
+
+def async_cache_classproperty(func):
+    """
+    异步类缓存属性
+    :param func:
+    :return:
+    """
+    return cache_classproperty(sync_run_async(func))
 
 
 def _async_run_in_child_thread_loop(container, method, args, kwargs):

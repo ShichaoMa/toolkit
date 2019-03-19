@@ -677,28 +677,71 @@ def find_caller_name(is_func=False, steps=1):
             filename = os.path.basename(os.path.dirname(co.co_filename))
         return filename
 
-#
-# class LazyDict(object):
-#     """
-#     懒加载dict, 提供一个转换函数，只有在获取dict中的值时，才对指定值进行turn函数的调用
-#     """
-#     def __init__(self, d, turn):
-#         self.dict = d
-#         self.turn = turn
-#
-#     def get(self, item):
-#         return self.dict.setdefault(item, self.turn(item, self.dict))
-#
-#     def __getitem__(self, item):
-#         return self.get(item)
-#
-#     def to_dict(self):
-#         return self.dict
+
+class classproperty(object):
+    """
+    property只能用于实例方法到实例属性的转换，使用classproperty来支持类方法到类属性的转换
+    """
+
+    def __init__(self, func):
+        self.func = func
+
+    def __get__(self, instance, owner):
+        return self.func(owner)
+
+
+def _classproperty_cache_for(all=False):
+    """
+    缓存类属性，只计算一次，如果all=True，子类和父类共用
+
+    :param all:
+    :return:
+    """
+    def outer(func: types.FunctionType):
+
+        base = None
+
+        @wraps(func)
+        def inner(*args, **kwargs):
+            nonlocal base
+            if base is None:
+                if all:
+                    base = find_ancestor(args[0], until_not_have=func.__name__)
+                else:
+                    base = args[0]
+
+            prop_name = "_" + func.__name__
+            if prop_name not in base.__dict__:
+                setattr(base, prop_name, func(*args, **kwargs))
+            return base.__dict__[prop_name]
+
+        return inner
+    return outer
+
+
+def global_cache_classproperty(func: types.FunctionType):
+    """
+    全局类缓存性
+    :param func:
+    :return:
+    """
+    return classproperty(_classproperty_cache_for(all=True)(func))
+
+
+def cache_classproperty(func: types.FunctionType):
+    """
+    类缓存属性
+    :param func:
+    :return:
+    """
+    return classproperty(_classproperty_cache_for(all=False)(func))
 
 
 def cache_property(func):
     """
-    缓存属性，只计算一次
+    缓存属性
+    :param func:
+    :return:
     """
     return property(_property_cache(func))
 
@@ -966,54 +1009,6 @@ def find_ancestor(cls, until_not_have=None):
             or cls.__base__ == object:
         return cls
     return find_ancestor(cls.__base__)
-
-
-class classproperty(object):
-    """
-    property只能用于实例方法到实例属性的转换，使用classproperty来支持类方法到类属性的转换
-    """
-
-    def __init__(self, func):
-        self.func = func
-
-    def __get__(self, instance, owner):
-        return self.func(owner)
-
-
-def cache_classproperty_for(all=False):
-    """
-    缓存类属性，只计算一次，如果all=True，子类和父类共用
-
-    :param all:
-    :return:
-    """
-    def _cache_classproperty(func: types.FunctionType):
-
-        base = None
-
-        @classproperty
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            nonlocal base
-            if base is None:
-                if all:
-                    base = find_ancestor(args[0], until_not_have=func.__name__)
-                else:
-                    base = args[0]
-
-            prop_name = "_" + func.__name__
-            if prop_name not in base.__dict__:
-                setattr(base, prop_name, func(*args, **kwargs))
-            return base.__dict__[prop_name]
-
-        return wrapper
-    return _cache_classproperty
-
-
-global_cache_classproperty = cache_classproperty_for(all=True)
-
-
-cache_classproperty = cache_classproperty_for(all=False)
 
 
 def _assert(boolean, data):
