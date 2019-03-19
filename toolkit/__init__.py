@@ -820,7 +820,7 @@ def cache_method(timeout: int=10):
     return cache
 
 
-def cache_method_for_updated(func: types.FunctionType):
+def cache_method_for_update(func: types.FunctionType):
     """
     缓存方法调用结果直到实例的updated返回True，与cache_method类似。
 
