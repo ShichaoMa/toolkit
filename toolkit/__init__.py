@@ -18,7 +18,7 @@ from queue import Empty
 from future.utils import raise_from
 from functools import wraps, reduce
 
-__version__ = '1.7.38'
+__version__ = '1.7.39'
 
 
 def test_prepare(search_paths :typing.List[str]=None):
@@ -721,7 +721,7 @@ def _classproperty_cache_for(all=False):
             nonlocal base
             if base is None:
                 if all:
-                    base = find_ancestor(args[0], until_not_have=func.__name__)
+                    base = find_ancestor(args[0], func.__name__)
                 else:
                     base = args[0]
 
@@ -1013,17 +1013,29 @@ class NotImplementedProp(object):
         return NotImplemented
 
 
-def find_ancestor(cls, until_not_have=None):
+def find_ancestor(cls, root_define=None):
     """
-    查找祖先，直到祖先为object或者祖先没有until_not_have这个属性时，返回当前类。
+    查找祖先，直到祖先为object或者祖先最早定义root_define这个属性时，返回当前类。
 
     :param cls:
+    :param root_define:
     :return:
     """
-    if until_not_have and not hasattr(cls.__base__, until_not_have) \
-            or cls.__base__ == object:
-        return cls
-    return find_ancestor(cls.__base__)
+    _mro = list(cls.__mro__)
+    root = None
+
+    while True:
+        cls = _mro.pop(0)
+        base = _mro[0]
+        # 这里使用in cls.__dict__判断而不使用hasattr是因为hasattr
+        # 会调用一个描述符属性的__get__，如果属性为cache_classproperty，
+        # 会引发递归死循环。
+        if not root_define or root_define and root_define in cls.__dict__:
+            root = cls
+        if base == object:
+            break
+
+    return root
 
 
 def _assert(boolean, data):

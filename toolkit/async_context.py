@@ -105,7 +105,7 @@ def async_cache_classproperty(func):
 
 def _coroutine_run_in_child_thread_loop(container, coroutine):
     """
-    使用一子线程事件循环还执行异步方法。
+    使用一子线程事件循环来执行异步方法。
     :param container:
     :param coroutine:
     :return:
