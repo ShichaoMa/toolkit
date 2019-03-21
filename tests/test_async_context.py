@@ -188,3 +188,16 @@ class TestAsyncRun(object):
         async def fun(a):
             return a
         assert awt(fun(1)) == 1
+
+    def test_run_future(self):
+        import asyncio
+
+        def fun(a):
+            loop = asyncio.get_event_loop()
+            future = loop.create_future()
+            def bar():
+                future.set_result(a*2)
+            loop.run_in_executor(None, bar)
+            return future
+
+        assert awt(fun, 3) == 6
