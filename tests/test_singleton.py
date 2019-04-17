@@ -1,12 +1,11 @@
-import unittest
-from toolkit.monitors import Service
+from toolkit.singleton import Singleton
 
 
-class SingletonTest(unittest.TestCase):
-
-    def test(self):
-      self.assertIs(Service(), Service())
+class A(metaclass=Singleton):
+    pass
 
 
-if __name__ == "__main__":
-    unittest.main()
+class TestSingleton:
+
+    def test_singleton(self):
+        assert A() is A()

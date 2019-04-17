@@ -1,10 +1,10 @@
 import time
+import pytest
 import unittest
-from toolkit import test_prepare
-test_prepare()
 from toolkit.translator import Translator
 
 
+@pytest.mark.skip
 class TranslateTest(unittest.TestCase):
 
     def assertContainEqual(self, first, second, msg=None):
@@ -52,7 +52,3 @@ class TranslateTest(unittest.TestCase):
             rs = t.translate("what a fuck day it is!")
             t.logger.info(rs)
             self.assertContainEqual(rs, "天")
-
-
-if __name__ == "__main__":
-    unittest.main()

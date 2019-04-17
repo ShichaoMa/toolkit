@@ -38,7 +38,7 @@ class MultiWorker(object):
     def run(self):
         """
         任务调度开始
-        
+
         @return:
         """
         self.start = True
@@ -54,12 +54,13 @@ class MultiWorker(object):
         for task in self.generator:
             self.queue.put(task)
         # 等待任务完成
-        while not self.queue.empty():
+        while not self.queue.empty() and any(w.is_alive() for w in workers):
             time.sleep(1)
         # 等待最后一波任务完成。
         self.start = False
         for worker in workers:
-            worker.join()
+            if worker.is_alive():
+                worker.join()
 
     def process(self):
         while self.start:

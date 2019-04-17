@@ -61,7 +61,7 @@ from numbers import Number
 from collections import UserDict
 from collections.abc import Collection, MutableSequence, MutableSet, MutableMapping
 
-from . import duplicate
+from .. import duplicate
 from .frozen import FrozenSettings
 
 __all__ = ["Settings", "SettingsLoader", "FrozenSettings"]

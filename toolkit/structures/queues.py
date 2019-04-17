@@ -7,8 +7,8 @@ import struct
 from threading import RLock
 from abc import ABC, abstractmethod
 
-from . import thread_safe_for_method, call_later
-from .managers import ExceptContext
+from .. import thread_safe_for_method, call_later
+from ..tools.managers import ExceptContext
 
 __all__ = ["Queue", "RedisQueue", "FifoDiskQueue"]
 

@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 from functools import reduce
-from .async_context import contextmanager
+from ..async_context import contextmanager
 
 
 class Processor(object):

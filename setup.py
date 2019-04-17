@@ -83,8 +83,8 @@ with cfg_manage(__file__.replace(".py", ".cfg.tpl")):
         ],
         entry_points={
             "console_scripts": [
-                "ver-inc = toolkit.package_control:change_version",
-                "mk-html = toolkit.markdown_helper:main",
+                "ver-inc = toolkit.tools.package_control:change_version",
+                "mk-html = toolkit.tools.markdown_helper:main",
             ]
         },
         keywords=KEYWORDS,

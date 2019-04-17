@@ -2,7 +2,7 @@ from threading import RLock
 from collections import UserDict
 from collections.abc import MutableSet
 
-from . import thread_safe_for_method
+from .. import thread_safe_for_method
 
 
 class ThreadSafeSet(MutableSet):

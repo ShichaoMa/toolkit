@@ -1,6 +1,6 @@
 import pytest
 
-from toolkit.linked_list import LinkedList
+from toolkit.structures.linked_list import LinkedList
 
 
 class TestLinkList(object):

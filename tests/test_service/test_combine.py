@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-from toolkit.combine import combine
+from toolkit.service.combine import combine
 
 
 class A:

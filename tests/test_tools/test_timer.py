@@ -1,6 +1,6 @@
 import time
 import unittest
-from toolkit.managers import Timer
+from toolkit.tools.managers import Timer
 
 
 class TimerTest(unittest.TestCase):
@@ -10,7 +10,3 @@ class TimerTest(unittest.TestCase):
             time.sleep(3)
 
         self.assertTrue(timer.cost > 3)
-
-
-if __name__ == "__main__":
-    unittest.main()
