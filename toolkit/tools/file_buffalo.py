@@ -16,6 +16,10 @@ class FileBuffalo(object):
         self.name = "tmp"
         self.lock = RLock()
 
+    @property
+    def finished(self):
+        return not self._finished and not self._datas
+
     def finish(self):
         self._finished = True
 
@@ -40,7 +44,7 @@ class FileBuffalo(object):
         :return:
         """
         buffer = b""
-        while (not self._finished or self._datas) and len(buffer) < size:
+        while not self.finished and len(buffer) < size:
             if self._datas:
                 with self.lock:
                     data = self._datas.pop(0)
