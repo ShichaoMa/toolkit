@@ -2,7 +2,7 @@ import os
 
 from markdown import markdown
 
-from .monitors import Service
+from ..service.monitors import Service
 
 
 class MarkDownRender(object):

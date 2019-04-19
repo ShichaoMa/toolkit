@@ -1,4 +1,4 @@
-from toolkit.package_control import change_version
+from toolkit.tools.package_control import change_version
 
 
 def test_version1(join_root_dir):

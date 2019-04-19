@@ -1,6 +1,6 @@
 import pytest
 
-from toolkit.processor import Processor, AsyncProcessor
+from toolkit.components.processor import Processor, AsyncProcessor
 
 
 @pytest.fixture(scope="module", params=[[183, 432, 1023], [11, 43, 59]])

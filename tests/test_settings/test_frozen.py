@@ -1,6 +1,6 @@
 import pytest
 
-from toolkit.frozen import Frozen
+from toolkit.settings.frozen import Frozen
 
 
 class TestFrozen(object):

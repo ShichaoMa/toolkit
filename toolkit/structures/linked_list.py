@@ -1,6 +1,3 @@
-from . import _assert
-
-
 class Node(object):
     """
     链表的节点
@@ -235,7 +232,8 @@ class LinkedList(object):
             return lambda index, left, right: left < index <= right
 
     def _get_node(self, index):
-        _assert(isinstance(index, int), TypeError("Index type must be int!"))
+        if not isinstance(index, int):
+            raise TypeError("Index type must be int!")
         index = self._adjust_index(index)
         node = self.head
         while index > 0:

@@ -1,7 +1,7 @@
 import time
 import traceback
 
-from . import find_caller_name
+from .. import find_caller_name
 
 __all__ = ["Blocker", "ExceptContext", "Timer"]
 

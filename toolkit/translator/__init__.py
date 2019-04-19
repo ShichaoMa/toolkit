@@ -1,4 +1,4 @@
-from ..monitors import ProxyPool
+from ..service.monitors import ProxyPool
 from .translate_adapter import TranslateAdapter
 
 __all__ = ["Translator"]

@@ -11,16 +11,15 @@ from itertools import repeat
 from argparse import ArgumentParser
 from kafka import KafkaConsumer, KafkaProducer
 
-from .logger import Logger
-from .frozen import Frozen
+from ..logger import Logger
 from .combine import combine
 from .daemon import daemonize
 from .consoler import Consoler
-from .singleton import Singleton
-from .managers import ExceptContext
-from .settings import SettingsLoader
+from ..singleton import Singleton
+from ..tools.managers import ExceptContext
+from ..settings import SettingsLoader, FrozenSettings
 
-from . import call_later, cache_property
+from .. import call_later, cache_property
 
 __all__ = ["ParallelMonitor", "LoggingMonitor", "Service",
            "ProxyPool", "ItemConsumer", "ItemProducer"]
@@ -77,7 +76,7 @@ class LoggingMonitor(object):
     def __init__(self, settings=None, local_settings=None, name=None):
         if name:
             self.name = name
-        if isinstance(settings, Frozen):
+        if isinstance(settings, FrozenSettings):
             self.settings = settings
         else:
             self.settings = self.loader.load(

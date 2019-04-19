@@ -5,7 +5,7 @@ import time
 import signal
 import warnings
 
-from . import timeout
+from .. import timeout
 
 __all__ = ["daemon", "daemonize"]
 
