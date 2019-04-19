@@ -27,4 +27,5 @@ class Service(Consoler):
         return self.parser.parse_args()
 
 
-Service().start()
+if __name__ == "__main__":
+    Service().start()

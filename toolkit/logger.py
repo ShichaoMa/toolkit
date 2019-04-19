@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 import datetime
+import warnings
 
 from functools import wraps
 from logging import handlers
@@ -12,6 +13,9 @@ from . import find_caller_name
 from .singleton import Singleton
 
 __all__ = ["UDPLogstashHandler", "Logger"]
+
+
+warnings.warn("logger module is deprecated", DeprecationWarning)
 
 
 class UDPLogstashHandler(handlers.DatagramHandler):

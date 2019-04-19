@@ -53,7 +53,3 @@ class RedisQueueTest(unittest.TestCase):
 
     def tearDown(self):
         self.queue.clear()
-
-
-if __name__ == "__main__":
-    unittest.main()
