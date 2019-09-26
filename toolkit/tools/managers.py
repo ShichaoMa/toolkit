@@ -14,41 +14,27 @@ class Blocker(object):
     如果置self.alive = False,由于time.sleep阻塞导致我们的程序当前线程无法获知alive状态，
     难以被关闭，通过使用Blocker，我们可以避免上述情况发生。
     eg:
-    def myfunc(self):
-        with Blocker(
-        sleep_time, self, interval=1, notify=lambda x: not x.alive) as sm:
-            if sm.is_notified:
-                `我们知道是被唤醒了，而不是时间到了`
-            ....
+    if Blocker(sleep_time).wait_timeout_or_notify(notify=lambda: time.time() > 1000000):
+        `返回true, 我们知道是被唤醒了，而不是时间到了`
+        ....
     """
-    def __init__(self, block_time, instance, interval=1,
-                 notify=lambda instance: False, immediately=False):
+    def __init__(self, block_time):
         """
         :param block_time: 需要阻塞的时长
-        :param instance: 使用这个对象来动态告知manager什么时候要中断程序了，
         这个对象会被传递给notify回调函数
-        :param interval: 如果这要中断程序，那么最长需要等待的时间间隔
-        :param notify: 回调函数，接收instance，来决定是否唤醒阻塞。
-        :param immediately: 是否不阻塞立即执行。
         """
         self.block_time = block_time
-        self.instance = instance
-        self.interval = interval
-        self.notify = notify
-        self.enter_time = time.time()
-        self.immediately = immediately
-        self.is_notified = True
+        self.interval = 0.5
 
-    def __enter__(self):
-        while not self.immediately and time.time() - \
-                self.enter_time < self.block_time \
-                and not self.notify(self.instance):
+    def wait_timeout_or_notify(self, notify=lambda: False):
+        start_time = time.time()
+        is_notified = False
+        while time.time() - start_time < self.block_time:
+            is_notified = notify()
+            if is_notified:
+                break
             time.sleep(self.interval)
-        self.is_notified = self.notify(self.instance)
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        return exc_type is None
+        return is_notified
 
 
 class ExceptContext(object):
