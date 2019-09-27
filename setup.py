@@ -44,9 +44,9 @@ NAME = "toolkity"
 DESCRIPTION = "simple function tools. "
 
 try:
-    LONG_DESCRIPTION = open("README.rst").read()
+    LONG_DESCRIPTION = open("README.md").read()
 except UnicodeDecodeError:
-    LONG_DESCRIPTION = open("README.rst", encoding="utf-8").read()
+    LONG_DESCRIPTION = open("README.md", encoding="utf-8").read()
 
 KEYWORDS = "tools function"
 
@@ -75,6 +75,7 @@ with cfg_manage(__file__.replace(".py", ".cfg.tpl")):
         version=VERSION,
         description=DESCRIPTION,
         long_description=LONG_DESCRIPTION,
+        long_description_content_type="text/markdown",
         classifiers=[
             'License :: OSI Approved :: MIT License',
             'Programming Language :: Python',
