@@ -18,7 +18,7 @@ from queue import Empty
 from future.utils import raise_from
 from functools import wraps, reduce
 
-__version__ = '1.8.1'
+__version__ = '1.9.0'
 
 
 def test_prepare(search_paths :typing.List[str]=None):

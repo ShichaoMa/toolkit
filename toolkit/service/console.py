@@ -7,8 +7,7 @@ from threading import Thread, local
 from code import InteractiveInterpreter
 
 
-__all__ = ["Consoler"]
-
+__all__ = ["CustomInteractiveInterpreter", "_local"]
 _local = local()
 _displayhook = sys.displayhook
 
@@ -121,10 +120,8 @@ class CustomInteractiveInterpreter(InteractiveInterpreter):
         try:
             ThreadedStream.push()
             source_to_eval = ''.join(self.buffer + [source])
-            # print("exec source : %s"%source_to_eval)
             result = super(
                 CustomInteractiveInterpreter, self).runsource(source_to_eval)
-            # print("result: %s"%result)
             if (self.more or result) and source != "\n":
                 self.buffer.append(source)
                 self.more = True
@@ -139,95 +136,3 @@ class CustomInteractiveInterpreter(InteractiveInterpreter):
 
     def write(self, data):
         sys.stdout.write(data)
-
-
-class Consoler(object):
-    """
-    通过交互客户端实时了解程序内部变化
-    """
-    parser = None
-    alive = True
-
-    def __init__(self, host, port, console, debug):
-        if console:
-            self._start_client(host, port)
-        elif debug:
-            self.namespace = locals()
-            self._init_console(host, port)
-
-    def _init_console(self, console_host, console_port):
-        console_thread = Thread(
-            target=self._console, args=(console_host, console_port))
-        console_thread.setDaemon(True)
-        console_thread.start()
-
-    def _start_client(self, console_host, console_port):
-        client = socket()
-        client.connect((console_host, console_port))
-        result = b""
-        while self.alive:
-            if not result.count(b"...") and result != b">>> ":
-                print(">>> ", end="")
-            try:
-                cmd = input()
-            except KeyboardInterrupt:
-                break
-            if not cmd:
-                cmd = "\n"
-            if cmd == "exit" or cmd == "exit()":
-                break
-            client.send(cmd.encode())
-            result = client.recv(102400)
-            if result:
-                print(result.decode(),
-                      end="" if result.count(b"...") or result == b">>> "
-                      else "\n")
-            else:
-                break
-        client.close()
-        self.alive = False
-        sys.exit(0)
-
-    def _console(self, console_host, console_port):
-        server = socket()
-        server.setblocking(0)
-        server.bind((console_host, console_port))
-        server.listen(0)
-        ci = CustomInteractiveInterpreter(self.namespace)
-        _local._current_ipy = ci
-        while self.alive:
-            client = None
-            try:
-                client, addr = server.accept()
-                while self.alive:
-                    try:
-                        cmd = client.recv(102400)
-                        if not cmd:
-                            break
-                        result = ci.runsource(cmd.decode()).encode()
-                        client.send(result)
-                    except BlockingIOError as e:
-                        time.sleep(0.1)
-            except BlockingIOError as e:
-                if not self.alive:
-                    break
-                time.sleep(1)
-            finally:
-                if client:
-                    try:
-                        client.close()
-                    except:
-                        pass
-        server.close()
-        self.alive = False
-
-    def stop(self, *args):
-        self.alive = False
-
-    def enrich_parser_arguments(self):
-        self.parser.add_argument(
-            "--console", help="start a console. ", action="store_true")
-        self.parser.add_argument(
-            "--console-host", help="console host. ", default="")
-        self.parser.add_argument(
-            "--console-port", type=int, help="console port. ", default=7878)
