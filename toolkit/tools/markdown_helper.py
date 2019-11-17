@@ -1,8 +1,9 @@
 import os
 
 from markdown import markdown
+from argparse import ArgumentParser
 
-from ..service.monitors import Service
+from ..service.monitors import ParallelMonitor
 
 
 class MarkDownRender(object):
@@ -79,12 +80,17 @@ class MarkDownRender(object):
         self.render_css()
 
 
-class MarkDownHelper(Service):
+class MarkDownHelper(ParallelMonitor):
     """
     将markdown文件转换成html文件并打开
     """
     def run(self):
-        mk_render = MarkDownRender(self.args.css, self.args.input)
+        parser = ArgumentParser()
+        parser.add_argument("input", help="markdown file or path.")
+        parser.add_argument(
+            "-c", "--css", help="css file name.", default="github-markdown.css")
+        args = parser.parse_args()
+        mk_render = MarkDownRender(args.css, args.input)
 
         with mk_render:
             output = mk_render.render()
@@ -94,12 +100,6 @@ class MarkDownHelper(Service):
                 os.system(f"open {output}")
             else:
                 self.logger.info("未发现可转换的文件！")
-
-    def enrich_parser_arguments(self):
-        super(MarkDownHelper, self).enrich_parser_arguments()
-        self.parser.add_argument("input", help="markdown file or path.")
-        self.parser.add_argument(
-            "-c", "--css", help="css file name.", default="github-markdown.css")
 
 
 def main():
