@@ -18,7 +18,7 @@ from queue import Empty
 from future.utils import raise_from
 from functools import wraps, reduce
 
-__version__ = '1.9.0'
+__version__ = '1.9.2'
 
 
 def test_prepare(search_paths :typing.List[str]=None):
@@ -571,7 +571,10 @@ def load(prop_str: str):
             except Exception as e:
                 ex = e
     else:
-        raise ex
+        if ex is not None:
+            raise ex
+        else:
+            raise ImportError("Empty path!")
 
 
 def free_port() -> int:
@@ -705,6 +708,18 @@ class classproperty(object):
         return self.func(owner)
 
 
+def clear_cache(ins_or_cls, method_name):
+    """
+    删除缓存
+    :param ins_or_cls:
+    :param method_name:
+    :return:
+    """
+    cache_key = "_" + method_name
+    if hasattr(ins_or_cls, cache_key):
+        delattr(ins_or_cls, cache_key)
+
+
 def _classproperty_cache_for(all=False):
     """
     缓存类属性，只计算一次，如果all=True，子类和父类共用
@@ -714,16 +729,12 @@ def _classproperty_cache_for(all=False):
     """
     def outer(func: types.FunctionType):
 
-        base = None
-
         @wraps(func)
         def inner(*args, **kwargs):
-            nonlocal base
-            if base is None:
-                if all:
-                    base = find_ancestor(args[0], func.__name__)
-                else:
-                    base = args[0]
+            if all:
+                base = find_ancestor(args[0], func.__name__)
+            else:
+                base = args[0]
 
             prop_name = "_" + func.__name__
             if prop_name not in base.__dict__:
@@ -764,9 +775,10 @@ def cache_property(func):
 def _property_cache(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        if func.__name__ not in args[0].__dict__:
-            args[0].__dict__[func.__name__] = func(*args, **kwargs)
-        return args[0].__dict__[func.__name__]
+        prop_name = "_" + func.__name__
+        if prop_name not in args[0].__dict__:
+            args[0].__dict__[prop_name] = func(*args, **kwargs)
+        return args[0].__dict__[prop_name]
 
     return wrapper
 
@@ -777,16 +789,17 @@ class cache_prop(object):
     """
     def __init__(self, func):
         self.func = func
+        self.prop_name = "_" + func.__name__
 
     def __get__(self, instance, owner):
-        if self.func.__name__ in instance.__dict__:
-            return instance.__dict__[self.func.__name__]
+        if self.prop_name in instance.__dict__:
+            return instance.__dict__[self.prop_name]
         else:
             return instance.__dict__.setdefault(
-                self.func.__name__, self.func(instance))
+                self.prop_name, self.func(instance))
 
     def __set__(self, instance, value):
-        raise AttributeError("{} is readonly.".format(self.func.__name__))
+        raise AttributeError("{} is readonly.".format(self.prop_name))
 
 
 def cache_for(timeout: typing.Union[float, int]=10):
@@ -799,7 +812,7 @@ def cache_for(timeout: typing.Union[float, int]=10):
         @property
         @wraps(func)
         def inner(*args, **kwargs):
-            prop_name = func.__name__
+            prop_name = "_" + func.__name__
             prop_start_name = "%s_cache_start_time" % prop_name
             if time.time() - args[0].__dict__.get(prop_start_name, 0) > timeout:
                 args[0].__dict__[prop_name] = func(*args, **kwargs)
