@@ -18,6 +18,7 @@ future = "*"
 markdown = "*"
 toolkity = {editable = true,path = "."}
 urllib3 = ">=1.24.2"
+contextvars = "*"
 
 [requires]
 python_version = "3.6"

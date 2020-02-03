@@ -1,13 +1,124 @@
 import sys
 import asyncio
 import inspect
+import contextvars
 
+from threading import RLock
 from functools import wraps
 from threading import Thread
 from contextlib import _GeneratorContextManager
 
 from . import _property_cache, global_cache_classproperty,\
     cache_classproperty, classproperty
+
+
+CURRENCY_TYPE_THREAD = 1
+CURRENCY_TYPE_COROUTINE = 2
+
+
+from weakref import WeakKeyDictionary, finalize, WeakSet, ref
+
+
+NOT_FOUND = object()
+
+
+class Compact36ContextVar(object):
+
+    def __init__(self, key):
+        self.task_val_mapping = WeakKeyDictionary()
+
+    def set(self, val):
+        self.task_val_mapping[asyncio.Task.current_task()] = val
+
+    def get(self):
+        task = asyncio.Task.current_task()
+        while True:
+            val = self.task_val_mapping.get(task, NOT_FOUND)
+            if val == NOT_FOUND and hasattr(task, "parent_task"):
+                task = task.parent_task()
+            else:
+                break
+
+        if val != NOT_FOUND:
+            return val
+
+
+def coro_finalize(task):
+    """
+    回收task时，将该task的child和其parent双向绑定到一起
+    :param task:
+    :return:
+    """
+    children = getattr(task, "children", WeakSet())
+    if hasattr(task, "parent_task") and task.parent_task() is not None:
+        parent_task = task.parent_task()
+        parent_task.children.update(children)
+        for child in children:
+            child.parent_task = ref(parent_task)
+
+
+def create_task(coro):
+    task = asyncio.get_event_loop().create_task(coro)
+    current_task = asyncio.Task.current_task()
+    if current_task is not None:
+        task.parent_task = ref(current_task)
+        if not hasattr(current_task, "children"):
+            current_task.children = WeakSet()
+        current_task.children.add(task)
+        finalize(task, coro_finalize, task)
+    return task
+
+
+class Context(object):
+    contextvar_mappings = dict()
+    lock = RLock()
+
+    def __init__(self, currency_type=None):
+        """
+        并发环境下的上下文变量，兼容python3.7, 3.6，threading 和coroutine
+        对于coroutine，在3.6环境下，需要传入currency_type = CURRENCY_TYPE_COROUTINE,
+        同时创建子协程需要使用当前包下的create_task才会有继承效果
+        :param currency_type: CURRENCY_TYPE_COROUTINE/CURRENCY_TYPE_THREAD/None
+        """
+        if currency_type == CURRENCY_TYPE_COROUTINE:
+            object.__setattr__(self, "contextvar", Compact36ContextVar)
+        else:
+            object.__setattr__(self, "contextvar", contextvars.ContextVar)
+
+    def __getattr__(self, item):
+        try:
+            return self[item]
+        except KeyError as e:
+            raise AttributeError(e)
+
+    def __getitem__(self, item):
+        key = self.contextvar_mappings.get(item)
+        if key is None:
+            raise KeyError(f"{item} not found!")
+        return key.get()
+
+    def get(self, item, default=None):
+        try:
+            return self[item]
+        except KeyError:
+            return default
+
+    def __setitem__(self, key, value):
+        with self.lock:
+            if key not in self.contextvar_mappings:
+                self.contextvar_mappings[key] = self.contextvar(key)
+        self.contextvar_mappings[key].set(value)
+
+    def __setattr__(self, key, value):
+        self[key] = value
+
+    def set(self, key, value):
+        self[key] = value
+
+    def clear(self):
+        ctx = contextvars.copy_context()
+        for var in ctx.keys():
+            var.set(None)
 
 
 def contextmanager(func):

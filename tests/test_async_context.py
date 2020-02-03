@@ -1,7 +1,8 @@
 import pytest
+import asyncio
 
 from toolkit.async_context import contextmanager, \
-    async_cached_property, async_property, awt
+    async_cached_property, async_property, awt, Context, CURRENCY_TYPE_COROUTINE, create_task
 
 
 class TestError(RuntimeError):
@@ -201,3 +202,46 @@ class TestAsyncRun(object):
             return future
 
         assert awt(fun, 3) == 6
+
+
+@pytest.mark.asyncio
+class TestContext(object):
+
+    async def test_context(self):
+        coroutinelocal = Context(currency_type=CURRENCY_TYPE_COROUTINE)
+        coroutinelocal["a"] = 11
+
+        async def fun():
+            return coroutinelocal["a"]
+
+        async def bar():
+            coroutinelocal["a"] = 33
+            return coroutinelocal["a"]
+
+        task2 = create_task(bar())
+        await asyncio.gather(task2)
+        task1 = create_task(fun())
+
+        await asyncio.gather(task1)
+        assert task1.result() == 11
+        assert task2.result() == 33
+
+    async def test_context_inherit(self):
+        coroutinelocal = Context(currency_type=CURRENCY_TYPE_COROUTINE)
+        coroutinelocal["a"] = 11
+
+        async def bar():
+            task = create_task(fun())
+            await asyncio.sleep(1)
+            coroutinelocal["a"] = 33
+            return task
+
+        async def fun():
+            assert coroutinelocal["a"] == 11
+            await asyncio.sleep(2)
+            assert coroutinelocal["a"] == 33
+
+        task2 = create_task(bar())
+        await asyncio.gather(task2)
+        task1 = task2.result()
+        await asyncio.gather(task1)
