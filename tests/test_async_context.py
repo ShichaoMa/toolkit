@@ -245,3 +245,15 @@ class TestContext(object):
         await asyncio.gather(task2)
         task1 = task2.result()
         await asyncio.gather(task1)
+
+    async def test_context_clear_coroutine(self):
+        coroutinelocal = Context(currency_type=CURRENCY_TYPE_COROUTINE)
+        coroutinelocal["a"] = 11
+        coroutinelocal.clear()
+        assert coroutinelocal["a"] is None
+
+    async def test_context_clear_thread(self):
+        coroutinelocal = Context()
+        coroutinelocal["a"] = 11
+        coroutinelocal.clear()
+        assert coroutinelocal["a"] is None

@@ -28,7 +28,10 @@ class Compact36ContextVar(object):
         self.task_val_mapping = WeakKeyDictionary()
 
     def set(self, val):
-        self.task_val_mapping[asyncio.Task.current_task()] = val
+        if val is None:
+            del self.task_val_mapping[asyncio.Task.current_task()]
+        else:
+            self.task_val_mapping[asyncio.Task.current_task()] = val
 
     def get(self):
         task = asyncio.Task.current_task()
@@ -82,8 +85,10 @@ class Context(object):
         """
         if currency_type == CURRENCY_TYPE_COROUTINE:
             object.__setattr__(self, "contextvar", Compact36ContextVar)
+            object.__setattr__(self, "context_keys", lambda: self.contextvar_mappings.values())
         else:
             object.__setattr__(self, "contextvar", contextvars.ContextVar)
+            object.__setattr__(self, "context_keys", lambda: contextvars.copy_context().keys())
 
     def __getattr__(self, item):
         try:
@@ -116,8 +121,7 @@ class Context(object):
         self[key] = value
 
     def clear(self):
-        ctx = contextvars.copy_context()
-        for var in ctx.keys():
+        for var in self.context_keys():
             var.set(None)
 
 
